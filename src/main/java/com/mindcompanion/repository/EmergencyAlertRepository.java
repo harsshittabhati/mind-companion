@@ -1,21 +1,21 @@
 package com.mindcompanion.repository;
 
 import com.mindcompanion.model.EmergencyAlert;
+import com.mindcompanion.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 @Repository
-public interface EmergencyAlertRepository
-        extends JpaRepository<EmergencyAlert, Long> {
+public interface EmergencyAlertRepository extends JpaRepository<EmergencyAlert, Long> {
 
-    // Get all alerts for a user
-    List<EmergencyAlert> findByUserIdOrderByCreatedAtDesc(Long userId);
+    // All unresolved alerts (admin view)
+    List<EmergencyAlert> findByIsResolvedFalse();
 
-    // Get unresolved alerts
-    List<EmergencyAlert> findByIsResolvedFalseOrderByCreatedAtDesc();
+    // All alerts for a specific user, newest first
+    List<EmergencyAlert> findByUserOrderByCreatedAtDesc(User user);
 
-    // Count alerts for a user
-    Long countByUserId(Long userId);
+    // Alerts for a user where email hasn't been sent yet
+    List<EmergencyAlert> findByUserAndEmailSentFalse(User user);
 }
