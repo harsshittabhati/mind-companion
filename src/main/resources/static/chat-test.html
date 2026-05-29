@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body { font-family: Arial; max-width: 600px; margin: 40px auto; padding: 20px; }
+        #messages { height: 300px; border: 1px solid #ccc; overflow-y: auto; padding: 10px; margin-bottom: 10px; }
+        .user-msg { color: blue; margin: 5px 0; }
+        .bot-msg { color: green; margin: 5px 0; }
+        .crisis-msg { color: red; font-weight: bold; margin: 5px 0; }
+        input { width: 70%; padding: 8px; }
+        button { padding: 8px 16px; margin-left: 5px; }
+        #status { color: gray; font-size: 12px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+<h2>🧠 Mind Companion — Chat Test</h2>
+<div id="status">Disconnected</div>
+
+<!-- Step 1: Login to get JWT -->
+<div style="margin-bottom:20px; padding:10px; background:#f5f5f5; border-radius:8px;">
+    <h4 style="margin:0 0 10px 0">Step 1 — Login</h4>
+    <input id="username" placeholder="Username" value="testuser" style="width:40%"/>
+    <input id="password" placeholder="Password" value="test123" type="password" style="width:40%"/>
+    <button onclick="login()">Login</button>
+    <div id="token-status" style="font-size:12px; color:gray; margin-top:5px"></div>
+</div>
+
+<!-- Step 2: Connect WebSocket -->
+<div style="margin-bottom:20px; padding:10px; background:#f5f5f5; border-radius:8px;">
+    <h4 style="margin:0 0 10px 0">Step 2 — Connect</h4>
+    <button onclick="connect()">Connect WebSocket</button>
+    <button onclick="disconnect()">Disconnect</button>
+</div>
+
+<!-- Step 3: Chat -->
+<div>
+    <h4>Step 3 — Chat</h4>
+    <div id="messages"></div>
+    <input id="messageInput" placeholder="Type a message..."
+           onkeypress="if(event.key==='Enter') sendMessage()"/>
+    <button onclick="sendMessage()">Send</button>
+</div>
+
+<script>
+    let stompClient = null;
+    let jwtToken = null;
+    let sessionId = 'session-' + Math.random().toString(36).substr(2, 9);
+
+    // ── Login ──────────────────────────────────
+    async function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            jwtToken = data.token;
+            document.getElementById('token-status').textContent
+                = '✅ Logged in as ' + data.username;
+        } else {
+            document.getElementById('token-status').textContent
+                = '❌ Login failed';
+        }
+    }
+
+    // ── Connect WebSocket ──────────────────────
+    function connect() {
+        if (!jwtToken) {
+            alert('Please login first!');
+            return;
+        }
+
+        const socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+
+        // Attach JWT token in connect headers
+        stompClient.connect(
+            { Authorization: 'Bearer ' + jwtToken },
+            function (frame) {
+                document.getElementById('status').textContent
+                    = '🟢 Connected';
+                document.getElementById('status').style.color = 'green';
+
+                // Subscribe to our personal message queue
+                stompClient.subscribe(
+                    '/user/queue/messages',
+                    function (message) {
+                        const response = JSON.parse(message.body);
+                        showMessage('🤖 Serenity: ' + response.message, 'bot-msg');
+
+                        if (response.isCrisis) {
+                            showMessage('🚨 ' + response.emergencyMessage, 'crisis-msg');
+                        }
+                    }
+                );
+            },
+            function (error) {
+                document.getElementById('status').textContent
+                    = '🔴 Connection failed: ' + error;
+                document.getElementById('status').style.color = 'red';
+            }
+        );
+    }
+
+    // ── Disconnect ─────────────────────────────
+    function disconnect() {
+        if (stompClient) {
+            stompClient.disconnect();
+            document.getElementById('status').textContent = 'Disconnected';
+            document.getElementById('status').style.color = 'gray';
+        }
+    }
+
+    // ── Send Message ───────────────────────────
+    function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const message = input.value.trim();
+
+        if (!message || !stompClient) return;
+
+        showMessage('👤 You: ' + message, 'user-msg');
+
+        stompClient.send('/app/chat.send', {}, JSON.stringify({
+            message: message,
+            sessionId: sessionId
+        }));
+
+        input.value = '';
+    }
+
+    // ── Show message in UI ─────────────────────
+    function showMessage(text, cssClass) {
+        const div = document.getElementById('messages');
+        const p = document.createElement('p');
+        p.className = cssClass;
+        p.textContent = text;
+        div.appendChild(p);
+        div.scrollTop = div.scrollHeight;
+    }
+</script>
+</body>
+</html>
