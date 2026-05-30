@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -50,6 +51,8 @@ public interface MoodEntryRepository
     List<MoodEntry> findByUserIdAndMoodLevel(
             Long userId, MoodLevel moodLevel);
 
+    List<MoodEntry> findByUserIdAndCreatedAtAfterOrderByCreatedAtAsc(
+            Long userId, LocalDateTime after);
     // Delete all entries for a user (GDPR)
     void deleteAllByUserId(Long userId);
 }

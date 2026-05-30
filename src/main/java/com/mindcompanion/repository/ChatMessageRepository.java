@@ -33,6 +33,7 @@ public interface ChatMessageRepository
     List<ChatMessage> findByUserIdAndSentiment(
             Long userId, SentimentType sentiment);
 
+
     // Get messages within a date range
     @Query("SELECT m FROM ChatMessage m WHERE m.user.id = :userId " +
             "AND m.createdAt BETWEEN :start AND :end " +
