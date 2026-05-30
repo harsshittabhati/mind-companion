@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindcompanion.dto.request.ChatRequest;
 import com.mindcompanion.dto.response.ChatResponse;
 import com.mindcompanion.model.ChatMessage;
+import com.mindcompanion.model.EmergencyAlert;
 import com.mindcompanion.model.User;
 import com.mindcompanion.model.enums.SentimentType;
 import com.mindcompanion.repository.ChatMessageRepository;
@@ -32,6 +33,8 @@ public class ChatService {
     private final UserRepository userRepository;
     private final EncryptionUtil encryptionUtil;
     private final ObjectMapper objectMapper;
+    private final EmergencyAlertService emergencyAlertService;  // NEW
+    private final EmailService emailService;                    // NEW
 
     @Value("${openai.api.key}")
     private String openAiApiKey;
@@ -101,10 +104,15 @@ public class ChatService {
 
         chatMessageRepository.save(userChatMessage);
 
-        // 3. Get AI response from Groq
+        // 3. Handle crisis — save alert + send email
+        if (isCrisis) {
+            handleCrisis(user, userMessage, intensityScore);
+        }
+
+        // 4. Get AI response from Groq
         String aiReply = getAiResponse(userMessage, user);
 
-        // 4. Save AI response (encrypted)
+        // 5. Save AI response (encrypted)
         ChatMessage botChatMessage = ChatMessage.builder()
                 .senderType("BOT")
                 .content(encryptionUtil.encrypt(aiReply))
@@ -114,7 +122,7 @@ public class ChatService {
 
         chatMessageRepository.save(botChatMessage);
 
-        // 5. Build response
+        // 6. Build response
         ChatResponse response = ChatResponse.builder()
                 .message(aiReply)
                 .senderType("BOT")
@@ -125,7 +133,7 @@ public class ChatService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        // 6. Add emergency message if crisis detected
+        // 7. Add emergency message if crisis detected
         if (isCrisis) {
             response.setEmergencyMessage(
                     "🚨 It sounds like you may be in crisis. " +
@@ -136,6 +144,52 @@ public class ChatService {
         }
 
         return response;
+    }
+
+    // ─── Crisis Handler ──────────────────────────────
+    /**
+     * Saves an emergency alert to DB and sends email to emergency contact.
+     * Runs inside the same transaction as processMessage.
+     * Email failure is caught and logged — it never breaks the chat flow.
+     */
+    private void handleCrisis(User user, String userMessage, double intensityScore) {
+
+        // Find which keyword triggered the alert
+        String triggeredKeyword = CRISIS_KEYWORDS.stream()
+                .filter(userMessage.toLowerCase()::contains)
+                .findFirst()
+                .orElse("unknown");
+
+        String triggerReason = "Crisis keyword detected in chat message";
+
+        // Save alert to database
+        EmergencyAlert alert = emergencyAlertService.createAlert(
+                user,
+                triggerReason,
+                triggeredKeyword,
+                intensityScore
+        );
+
+        log.warn("🚨 Crisis detected for user='{}', keyword='{}', alertId={}",
+                user.getUsername(), triggeredKeyword, alert.getId());
+
+        // Send email alert — wrapped in try/catch so email failure
+        // never stops the chat response from reaching the user
+        try {
+            emailService.sendCrisisAlertEmail(
+                    user.getUsername(),
+                    triggeredKeyword,
+                    triggerReason
+            );
+
+            // Mark alert as email-sent in DB
+            emergencyAlertService.markEmailSent(alert.getId());
+
+        } catch (Exception e) {
+            log.error("⚠️ Crisis alert email failed for user='{}', " +
+                            "alertId={}: {}", user.getUsername(), alert.getId(),
+                    e.getMessage());
+        }
     }
 
     // ─── Sentiment Analysis ──────────────────────────
@@ -230,8 +284,6 @@ public class ChatService {
                     }}
             );
 
-            log.debug("Request body: {}", requestBody);
-
             // Build HTTP client with timeouts
             OkHttpClient client = new OkHttpClient.Builder()
                     .connectTimeout(30, TimeUnit.SECONDS)
@@ -249,18 +301,13 @@ public class ChatService {
                     ))
                     .build();
 
-            log.debug("Sending request to Groq API...");
-
             try (Response httpResponse = client.newCall(httpRequest)
                     .execute()) {
-
-                log.debug("Groq API response code: {}", httpResponse.code());
 
                 String responseBodyStr = httpResponse.body() != null
                         ? httpResponse.body().string() : "empty body";
 
                 if (httpResponse.isSuccessful()) {
-                    log.debug("Groq API success. Parsing response...");
                     JsonNode jsonNode = objectMapper.readTree(responseBodyStr);
                     String reply = jsonNode
                             .path("choices")
@@ -270,7 +317,6 @@ public class ChatService {
                             .asText("");
 
                     if (!reply.isEmpty()) {
-                        log.debug("Groq replied successfully");
                         return reply;
                     } else {
                         log.error("Groq response had empty content. " +
