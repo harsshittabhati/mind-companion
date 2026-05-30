@@ -4,6 +4,7 @@ import com.mindcompanion.model.User;
 import com.mindcompanion.repository.UserRepository;
 import com.mindcompanion.service.AnalyticsService;
 import com.mindcompanion.service.GamificationService;
+import com.mindcompanion.service.PdfReportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,7 @@ public class AnalyticsController {
     private final AnalyticsService analyticsService;
     private final GamificationService gamificationService;
     private final UserRepository userRepository;
+    private final PdfReportService pdfReportService;
 
     /**
      * GET /api/analytics/dashboard
@@ -125,5 +127,27 @@ public class AnalyticsController {
         return userRepository.findByUsername(principal.getName())
                 .orElseThrow(() -> new RuntimeException(
                         "User not found: " + principal.getName()));
+    }
+    /**
+     * GET /api/analytics/report/pdf
+     * Downloads a PDF wellness report for the current user.
+     */
+    @GetMapping("/report/pdf")
+    public ResponseEntity<byte[]> downloadPdfReport(
+            Principal principal) {
+        try {
+            User user = getUser(principal);
+            byte[] pdf = pdfReportService.generateWellnessReport(user);
+
+            return ResponseEntity.ok()
+                    .header("Content-Disposition",
+                            "attachment; filename=wellness-report.pdf")
+                    .header("Content-Type", "application/pdf")
+                    .body(pdf);
+
+        } catch (Exception e) {
+            log.error("Failed to generate PDF report: {}", e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }
