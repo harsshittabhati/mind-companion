@@ -8,6 +8,7 @@ import com.mindcompanion.service.ChatService;
 import com.mindcompanion.util.EncryptionUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -27,6 +28,18 @@ public class ChatController {
     private final SimpMessagingTemplate messagingTemplate;
     private final EncryptionUtil encryptionUtil;
 
+    // ─── REST endpoint: send message ─────────────────
+    @PostMapping("/api/chat/send")
+    public ResponseEntity<ChatResponse> sendMessageRest(
+            @RequestBody ChatRequest request,
+            Principal principal) {
+
+        String username = principal.getName();
+        log.debug("REST chat message from: {}", username);
+        ChatResponse response = chatService.processMessage(request, username);
+        return ResponseEntity.ok(response);
+    }
+
     // ─── WebSocket endpoint ──────────────────────────
     @MessageMapping("/chat.send")
     public void sendMessage(
@@ -35,7 +48,7 @@ public class ChatController {
 
         try {
             String username = principal.getName();
-            log.debug("Message received from: {}", username);
+            log.debug("WS message received from: {}", username);
 
             ChatResponse response = chatService
                     .processMessage(request, username);
@@ -56,7 +69,7 @@ public class ChatController {
             }
 
         } catch (Exception e) {
-            log.error("Error processing message: {}", e.getMessage());
+            log.error("Error processing WS message: {}", e.getMessage());
         }
     }
 
