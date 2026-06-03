@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6"
+      lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="${pageTitle} ?: 'Mind Companion'">Mind Companion</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+          rel="stylesheet"/>
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+          rel="stylesheet"/>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+          rel="stylesheet"/>
+
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+
+        body { background-color: #f8f9fa; }
+
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            min-height: 100vh;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            position: fixed;
+            top: 0; left: 0;
+            z-index: 100;
+            padding-top: 20px;
+        }
+
+        .sidebar .brand {
+            color: #e94560;
+            font-size: 1.4rem;
+            font-weight: 700;
+            padding: 10px 20px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar .brand span { color: #fff; }
+
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.7);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 2px 10px;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            color: #fff;
+            background: rgba(233,69,96,0.2);
+            border-left: 3px solid #e94560;
+        }
+
+        .sidebar .nav-link i { margin-right: 10px; font-size: 1rem; }
+
+        /* Main content */
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        /* Top navbar */
+        .top-navbar {
+            background: #fff;
+            border-bottom: 1px solid #e9ecef;
+            padding: 12px 20px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        /* Cards */
+        .card {
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.06);
+        }
+
+        .card-header {
+            background: transparent;
+            border-bottom: 1px solid #f0f0f0;
+            font-weight: 600;
+        }
+
+        /* Buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, #e94560, #c62a47);
+            border: none;
+            border-radius: 8px;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #c62a47, #a01e35);
+        }
+
+        /* Sentiment badges */
+        .badge-positive { background-color: #28a745; }
+        .badge-negative { background-color: #dc3545; }
+        .badge-neutral  { background-color: #6c757d; }
+        .badge-crisis   { background-color: #721c24; }
+
+        /* XP bar */
+        .xp-bar { height: 6px; border-radius: 3px; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; }
+        }
+    </style>
+
+    <!-- Page-specific styles -->
+    <th:block th:replace="${extraStyles} ?: ~{}"></th:block>
+</head>
+<body>
+
+<!-- Sidebar (only for logged-in users) -->
+<div class="sidebar" sec:authorize="isAuthenticated()">
+    <div class="brand">Mind <span>Companion</span></div>
+    <nav class="nav flex-column mt-3">
+        <a class="nav-link" th:href="@{/dashboard}"
+           th:classappend="${activePage == 'dashboard'} ? 'active'">
+            <i class="bi bi-grid-1x2"></i> Dashboard
+        </a>
+        <a class="nav-link" th:href="@{/chat}"
+           th:classappend="${activePage == 'chat'} ? 'active'">
+            <i class="bi bi-chat-heart"></i> Chat with Serenity
+        </a>
+        <a class="nav-link" th:href="@{/mood}"
+           th:classappend="${activePage == 'mood'} ? 'active'">
+            <i class="bi bi-emoji-smile"></i> Mood Check-in
+        </a>
+        <a class="nav-link" th:href="@{/journal}"
+           th:classappend="${activePage == 'journal'} ? 'active'">
+            <i class="bi bi-journal-heart"></i> Journal
+        </a>
+        <a class="nav-link" th:href="@{/profile}"
+           th:classappend="${activePage == 'profile'} ? 'active'">
+            <i class="bi bi-person-circle"></i> Profile
+        </a>
+        <hr style="border-color: rgba(255,255,255,0.1); margin: 10px 20px;"/>
+        <a class="nav-link text-danger" th:href="@{/logout}">
+            <i class="bi bi-box-arrow-left"></i> Logout
+        </a>
+    </nav>
+</div>
+
+<!-- Main content wrapper -->
+<div th:class="${#authorization.expression('isAuthenticated()')} ? 'main-content' : ''">
+
+    <!-- Top navbar for authenticated users -->
+    <div class="top-navbar d-flex justify-content-between align-items-center"
+         sec:authorize="isAuthenticated()">
+        <h5 class="mb-0 fw-600" th:text="${pageTitle} ?: 'Mind Companion'">Mind Companion</h5>
+        <div class="d-flex align-items-center gap-3">
+            <span class="text-muted small">
+                <i class="bi bi-person-circle me-1"></i>
+                <span sec:authentication="name">User</span>
+            </span>
+        </div>
+    </div>
+
+    <!-- Page content -->
+    <th:block th:replace="${content} ?: ~{}"></th:block>
+</div>
+
+<!-- Bootstrap 5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Page-specific scripts -->
+<th:block th:replace="${extraScripts} ?: ~{}"></th:block>
+
+</body>
+</html>
