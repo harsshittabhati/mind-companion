@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Journal — Mind Companion</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f8f9fa; }
+        .sidebar {
+            width: 250px; min-height: 100vh;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            position: fixed; top: 0; left: 0; z-index: 100; padding-top: 20px;
+        }
+        .sidebar .brand { color: #e94560; font-size: 1.4rem; font-weight: 700; padding: 10px 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar .brand span { color: #fff; }
+        .sidebar .nav-link { color: rgba(255,255,255,0.7); padding: 12px 20px; border-radius: 8px; margin: 2px 10px; transition: all 0.3s; font-size: 0.9rem; }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active { color: #fff; background: rgba(233,69,96,0.2); border-left: 3px solid #e94560; }
+        .sidebar .nav-link i { margin-right: 10px; }
+        .main-content { margin-left: 250px; padding: 20px; }
+        .top-navbar { background: #fff; padding: 12px 20px; margin-bottom: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .card { border: none; border-radius: 16px; box-shadow: 0 2px 15px rgba(0,0,0,0.06); }
+
+        .journal-textarea {
+            border: 1.5px solid #e9ecef; border-radius: 12px;
+            padding: 16px; font-size: 0.95rem; line-height: 1.8;
+            min-height: 200px; resize: vertical; width: 100%;
+            font-family: 'Inter', sans-serif; outline: none;
+        }
+        .journal-textarea:focus { border-color: #e94560; box-shadow: 0 0 0 3px rgba(233,69,96,0.1); }
+
+        .ai-prompt-box {
+            background: linear-gradient(135deg, #f8f0ff, #fff0f3);
+            border: 1px solid #e8d5ff; border-radius: 12px;
+            padding: 16px; margin-bottom: 16px;
+        }
+        .ai-prompt-box .prompt-label { font-size: 0.75rem; font-weight: 600; color: #7c3aed; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .btn-submit { background: linear-gradient(135deg, #e94560, #c62a47); border: none; border-radius: 10px; padding: 12px 30px; font-weight: 600; color: #fff; }
+        .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 5px 15px rgba(233,69,96,0.3); color: #fff; }
+        .btn-prompt { background: linear-gradient(135deg, #7c3aed, #5b21b6); border: none; border-radius: 10px; padding: 10px 20px; font-weight: 600; color: #fff; font-size: 0.85rem; }
+        .btn-prompt:hover { color: #fff; opacity: 0.9; }
+
+        .journal-entry-card {
+            background: #fff; border-radius: 12px; padding: 16px;
+            margin-bottom: 12px; border-left: 4px solid #e94560;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .journal-entry-date { font-size: 0.8rem; color: #adb5bd; }
+        .journal-entry-content { font-size: 0.9rem; color: #495057; margin-top: 8px; line-height: 1.6; }
+        .sentiment-pill { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.72rem; font-weight: 600; }
+        .sentiment-POSITIVE { background: #d4edda; color: #155724; }
+        .sentiment-NEGATIVE { background: #f8d7da; color: #721c24; }
+        .sentiment-NEUTRAL  { background: #e2e3e5; color: #383d41; }
+        .sentiment-CRISIS   { background: #721c24; color: #fff; }
+
+        .word-count { font-size: 0.8rem; color: #adb5bd; text-align: right; margin-top: 4px; }
+
+        @media (max-width: 768px) { .sidebar { display: none; } .main-content { margin-left: 0; } }
+    </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <div class="brand">Mind <span>Companion</span></div>
+    <nav class="nav flex-column mt-3">
+        <a class="nav-link" href="/dashboard"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+        <a class="nav-link" href="/chat"><i class="bi bi-chat-heart"></i> Chat with Serenity</a>
+        <a class="nav-link" href="/mood"><i class="bi bi-emoji-smile"></i> Mood Check-in</a>
+        <a class="nav-link active" href="/journal"><i class="bi bi-journal-heart"></i> Journal</a>
+        <a class="nav-link" href="/profile"><i class="bi bi-person-circle"></i> Profile</a>
+        <hr style="border-color:rgba(255,255,255,0.1);margin:10px 20px;"/>
+        <a class="nav-link text-danger" href="/logout"><i class="bi bi-box-arrow-left"></i> Logout</a>
+    </nav>
+</div>
+
+<!-- Main content -->
+<div class="main-content">
+    <div class="top-navbar d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold">My Journal</h5>
+        <span class="text-muted small"><i class="bi bi-person-circle me-1"></i><span id="usernameDisplay"></span></span>
+    </div>
+
+    <div class="row g-4">
+        <!-- Write entry -->
+        <div class="col-lg-7">
+            <div class="card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h6 class="fw-bold mb-1">New Journal Entry</h6>
+                        <p class="text-muted mb-0" style="font-size:0.85rem" id="todayDate"></p>
+                    </div>
+                    <button class="btn-prompt" onclick="getAiPrompt()" id="promptBtn">
+                        <i class="bi bi-stars me-1"></i>Get AI Prompt
+                    </button>
+                </div>
+
+                <!-- AI prompt box -->
+                <div class="ai-prompt-box" id="aiPromptBox" style="display:none">
+                    <div class="prompt-label"><i class="bi bi-stars me-1"></i>Serenity's Prompt</div>
+                    <p class="mb-0 mt-2" id="aiPromptText" style="font-size:0.9rem;color:#4c1d95;line-height:1.6"></p>
+                </div>
+
+                <div id="alertContainer"></div>
+
+                <!-- Title -->
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="journalTitle"
+                           placeholder="Entry title (optional)"
+                           style="border-radius:10px;border:1.5px solid #e9ecef;padding:12px 16px;font-size:0.9rem;"/>
+                </div>
+
+                <!-- Content -->
+                <textarea class="journal-textarea" id="journalContent"
+                          placeholder="What's on your mind? Write freely — this space is just for you..."
+                          oninput="updateWordCount()"></textarea>
+                <div class="word-count"><span id="wordCount">0</span> words</div>
+
+                <!-- Mood tag -->
+                <div class="mt-3 mb-4">
+                    <label class="form-label" style="font-size:0.85rem;font-weight:500">Mood tag</label>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-sm mood-tag-btn" data-mood="happy" onclick="selectMoodTag(this)">😊 Happy</button>
+                        <button class="btn btn-sm mood-tag-btn" data-mood="sad" onclick="selectMoodTag(this)">😢 Sad</button>
+                        <button class="btn btn-sm mood-tag-btn" data-mood="anxious" onclick="selectMoodTag(this)">😰 Anxious</button>
+                        <button class="btn btn-sm mood-tag-btn" data-mood="grateful" onclick="selectMoodTag(this)">🙏 Grateful</button>
+                        <button class="btn btn-sm mood-tag-btn" data-mood="angry" onclick="selectMoodTag(this)">😠 Angry</button>
+                        <button class="btn btn-sm mood-tag-btn" data-mood="calm" onclick="selectMoodTag(this)">😌 Calm</button>
+                    </div>
+                </div>
+
+                <button class="btn btn-submit" onclick="submitJournal()" id="submitBtn">
+                    <i class="bi bi-journal-plus me-2"></i>Save Entry
+                </button>
+            </div>
+        </div>
+
+        <!-- History -->
+        <div class="col-lg-5">
+            <div class="card p-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-clock-history me-2 text-danger"></i>Past Entries</h6>
+                <div id="journalHistory">
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-journal" style="font-size:2rem"></i>
+                        <p class="mt-2 mb-0" style="font-size:0.85rem">Loading your journal...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<style>
+    .mood-tag-btn {
+        border: 1.5px solid #e9ecef; border-radius: 20px;
+        background: #fff; color: #495057; font-size: 0.8rem;
+        padding: 5px 12px; transition: all 0.2s;
+    }
+    .mood-tag-btn:hover { border-color: #e94560; color: #e94560; }
+    .mood-tag-btn.selected { background: #fff5f7; border-color: #e94560; color: #e94560; font-weight: 600; }
+</style>
+<script>
+    const token = localStorage.getItem('token');
+    const username = localStorage.getItem('username') || 'User';
+    document.getElementById('usernameDisplay').textContent = username;
+    if (!token) window.location.href = '/login';
+
+    document.getElementById('todayDate').textContent =
+        new Date().toLocaleDateString('en-IN', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+
+    let selectedMoodTag = null;
+
+    function selectMoodTag(btn) {
+        document.querySelectorAll('.mood-tag-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedMoodTag = btn.dataset.mood;
+    }
+
+    function updateWordCount() {
+        const text = document.getElementById('journalContent').value.trim();
+        const count = text ? text.split(/\s+/).length : 0;
+        document.getElementById('wordCount').textContent = count;
+    }
+
+    async function getAiPrompt() {
+        const btn = document.getElementById('promptBtn');
+        btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Loading...';
+        btn.disabled = true;
+
+        try {
+            const response = await fetch('/api/journal/prompt', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await response.json();
+            document.getElementById('aiPromptText').textContent = data.prompt || data.message || 'Reflect on a moment today that made you feel something deeply.';
+            document.getElementById('aiPromptBox').style.display = 'block';
+        } catch (err) {
+            document.getElementById('aiPromptText').textContent = 'What is one thing you are grateful for today?';
+            document.getElementById('aiPromptBox').style.display = 'block';
+        } finally {
+            btn.innerHTML = '<i class="bi bi-stars me-1"></i>New Prompt';
+            btn.disabled = false;
+        }
+    }
+
+    async function submitJournal() {
+        const content = document.getElementById('journalContent').value.trim();
+        const title = document.getElementById('journalTitle').value.trim();
+
+        if (!content) {
+            showAlert('Please write something before saving.', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Saving...';
+
+        try {
+            const response = await fetch('/api/journal/entry', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({ title, content, moodTag: selectedMoodTag })
+            });
+
+            if (response.ok) {
+                showAlert('Journal entry saved! 📓', 'success');
+                document.getElementById('journalContent').value = '';
+                document.getElementById('journalTitle').value = '';
+                document.getElementById('wordCount').textContent = '0';
+                document.getElementById('aiPromptBox').style.display = 'none';
+                document.querySelectorAll('.mood-tag-btn').forEach(b => b.classList.remove('selected'));
+                selectedMoodTag = null;
+                loadHistory();
+            } else {
+                showAlert('Failed to save. Please try again.', 'danger');
+            }
+        } catch (err) {
+            showAlert('Connection error. Please try again.', 'danger');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-journal-plus me-2"></i>Save Entry';
+        }
+    }
+
+    async function loadHistory() {
+        try {
+            const response = await fetch('/api/journal/history', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await response.json();
+            const container = document.getElementById('journalHistory');
+
+            if (!data.length) {
+                container.innerHTML = '<p class="text-muted text-center" style="font-size:0.85rem">No entries yet. Start writing!</p>';
+                return;
+            }
+
+            container.innerHTML = data.slice(0, 10).map(entry => `
+                <div class="journal-entry-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="fw-600" style="font-size:0.9rem">${escapeHtml(entry.title || 'Untitled Entry')}</div>
+                        <div class="journal-entry-date">${formatDate(entry.createdAt)}</div>
+                    </div>
+                    ${entry.sentiment ? `<span class="sentiment-pill sentiment-${entry.sentiment} mt-1">${entry.sentiment}</span>` : ''}
+                    <div class="journal-entry-content">${escapeHtml(truncate(entry.content, 120))}</div>
+                </div>`).join('');
+        } catch (err) {
+            console.error('Error loading journal:', err);
+        }
+    }
+
+    function truncate(text, len) {
+        return text && text.length > len ? text.substring(0, len) + '...' : text;
+    }
+
+    function formatDate(dateStr) {
+        return new Date(dateStr).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'});
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const d = document.createElement('div');
+        d.appendChild(document.createTextNode(text));
+        return d.innerHTML;
+    }
+
+    function showAlert(msg, type) {
+        document.getElementById('alertContainer').innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show">
+                ${msg}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`;
+        setTimeout(() => { const a = document.querySelector('.alert'); if (a) a.remove(); }, 3000);
+    }
+
+    loadHistory();
+</script>
+</body>
+</html>
