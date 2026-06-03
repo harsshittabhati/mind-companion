@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Mood Check-in — Mind Companion</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f8f9fa; }
+        .sidebar {
+            width: 250px; min-height: 100vh;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            position: fixed; top: 0; left: 0; z-index: 100; padding-top: 20px;
+        }
+        .sidebar .brand { color: #e94560; font-size: 1.4rem; font-weight: 700; padding: 10px 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar .brand span { color: #fff; }
+        .sidebar .nav-link { color: rgba(255,255,255,0.7); padding: 12px 20px; border-radius: 8px; margin: 2px 10px; transition: all 0.3s; font-size: 0.9rem; }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active { color: #fff; background: rgba(233,69,96,0.2); border-left: 3px solid #e94560; }
+        .sidebar .nav-link i { margin-right: 10px; }
+        .main-content { margin-left: 250px; padding: 20px; }
+        .top-navbar { background: #fff; padding: 12px 20px; margin-bottom: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .card { border: none; border-radius: 16px; box-shadow: 0 2px 15px rgba(0,0,0,0.06); }
+
+        /* Emoji mood selector */
+        .mood-emojis { display: flex; justify-content: space-between; gap: 8px; margin: 20px 0; }
+        .mood-emoji-btn {
+            flex: 1; padding: 16px 8px; border: 2px solid #e9ecef;
+            border-radius: 16px; background: #fff; cursor: pointer;
+            text-align: center; transition: all 0.3s; font-size: 2rem;
+        }
+        .mood-emoji-btn:hover { transform: scale(1.05); border-color: #e94560; }
+        .mood-emoji-btn.selected { border-color: #e94560; background: #fff5f7; transform: scale(1.08); box-shadow: 0 4px 15px rgba(233,69,96,0.2); }
+        .mood-emoji-btn .score-label { font-size: 0.75rem; font-weight: 600; color: #6c757d; margin-top: 6px; }
+        .mood-emoji-btn.selected .score-label { color: #e94560; }
+
+        /* Score display */
+        .score-display { text-align: center; margin: 10px 0 20px; }
+        .score-number { font-size: 3rem; font-weight: 700; color: #e94560; }
+        .score-label-text { font-size: 1rem; color: #6c757d; }
+
+        /* History items */
+        .history-item { padding: 14px 16px; border-radius: 12px; background: #f8f9fa; margin-bottom: 10px; border-left: 4px solid #e94560; }
+        .history-date { font-size: 0.8rem; color: #adb5bd; }
+        .mood-level-badge { padding: 3px 10px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
+        .level-VERY_LOW { background: #f8d7da; color: #721c24; }
+        .level-LOW { background: #fff3cd; color: #856404; }
+        .level-NEUTRAL { background: #e2e3e5; color: #383d41; }
+        .level-GOOD { background: #d4edda; color: #155724; }
+        .level-EXCELLENT { background: #cce5ff; color: #004085; }
+
+        .btn-submit { background: linear-gradient(135deg, #e94560, #c62a47); border: none; border-radius: 10px; padding: 12px 30px; font-weight: 600; color: #fff; }
+        .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 5px 15px rgba(233,69,96,0.3); color: #fff; }
+
+        @media (max-width: 768px) { .sidebar { display: none; } .main-content { margin-left: 0; } .mood-emojis { flex-wrap: wrap; } .mood-emoji-btn { min-width: 60px; } }
+    </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <div class="brand">Mind <span>Companion</span></div>
+    <nav class="nav flex-column mt-3">
+        <a class="nav-link" href="/dashboard"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+        <a class="nav-link" href="/chat"><i class="bi bi-chat-heart"></i> Chat with Serenity</a>
+        <a class="nav-link active" href="/mood"><i class="bi bi-emoji-smile"></i> Mood Check-in</a>
+        <a class="nav-link" href="/journal"><i class="bi bi-journal-heart"></i> Journal</a>
+        <a class="nav-link" href="/profile"><i class="bi bi-person-circle"></i> Profile</a>
+        <hr style="border-color:rgba(255,255,255,0.1);margin:10px 20px;"/>
+        <a class="nav-link text-danger" href="/logout"><i class="bi bi-box-arrow-left"></i> Logout</a>
+    </nav>
+</div>
+
+<!-- Main content -->
+<div class="main-content">
+    <div class="top-navbar d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold">Mood Check-in</h5>
+        <span class="text-muted small"><i class="bi bi-person-circle me-1"></i><span id="usernameDisplay"></span></span>
+    </div>
+
+    <div class="row g-4">
+        <!-- Check-in form -->
+        <div class="col-lg-7">
+            <div class="card p-4">
+                <h6 class="fw-bold mb-1">How are you feeling today?</h6>
+                <p class="text-muted mb-3" style="font-size:0.85rem">Select your mood and add an optional note</p>
+
+                <div id="alertContainer"></div>
+
+                <!-- Emoji selector -->
+                <div class="mood-emojis" id="moodEmojis">
+                    <div class="mood-emoji-btn" data-score="1" onclick="selectMood(1)">😢<div class="score-label">1</div></div>
+                    <div class="mood-emoji-btn" data-score="2" onclick="selectMood(2)">😞<div class="score-label">2</div></div>
+                    <div class="mood-emoji-btn" data-score="3" onclick="selectMood(3)">😟<div class="score-label">3</div></div>
+                    <div class="mood-emoji-btn" data-score="4" onclick="selectMood(4)">😐<div class="score-label">4</div></div>
+                    <div class="mood-emoji-btn" data-score="5" onclick="selectMood(5)">😑<div class="score-label">5</div></div>
+                    <div class="mood-emoji-btn" data-score="6" onclick="selectMood(6)">🙂<div class="score-label">6</div></div>
+                    <div class="mood-emoji-btn" data-score="7" onclick="selectMood(7)">😊<div class="score-label">7</div></div>
+                    <div class="mood-emoji-btn" data-score="8" onclick="selectMood(8)">😄<div class="score-label">8</div></div>
+                    <div class="mood-emoji-btn" data-score="9" onclick="selectMood(9)">😁<div class="score-label">9</div></div>
+                    <div class="mood-emoji-btn" data-score="10" onclick="selectMood(10)">🤩<div class="score-label">10</div></div>
+                </div>
+
+                <!-- Score display -->
+                <div class="score-display" id="scoreDisplay" style="display:none">
+                    <div class="score-number" id="scoreNumber">5</div>
+                    <div class="score-label-text" id="scoreLabelText">Neutral</div>
+                </div>
+
+                <!-- Notes -->
+                <div class="mb-4">
+                    <label class="form-label fw-500" style="font-size:0.9rem">Add a note <span class="text-muted">(optional)</span></label>
+                    <textarea class="form-control" id="moodNote" rows="3"
+                              placeholder="What's on your mind today? Any triggers, wins, or reflections..."
+                              style="border-radius:10px; border:1.5px solid #e9ecef; font-size:0.9rem;"></textarea>
+                </div>
+
+                <button class="btn btn-submit" onclick="submitMood()" id="submitBtn">
+                    <i class="bi bi-check-circle me-2"></i>Save Check-in
+                </button>
+            </div>
+        </div>
+
+        <!-- Weekly summary -->
+        <div class="col-lg-5">
+            <div class="card p-4 mb-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-bar-chart me-2 text-danger"></i>This Week</h6>
+                <div id="weeklySummary">
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-hourglass-split" style="font-size:2rem"></i>
+                        <p class="mt-2 mb-0" style="font-size:0.85rem">Loading weekly data...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-clock-history me-2 text-danger"></i>Recent Check-ins</h6>
+                <div id="moodHistory">
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-hourglass-split" style="font-size:2rem"></i>
+                        <p class="mt-2 mb-0" style="font-size:0.85rem">Loading history...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const token = localStorage.getItem('token');
+    const username = localStorage.getItem('username') || 'User';
+    document.getElementById('usernameDisplay').textContent = username;
+    if (!token) window.location.href = '/login';
+
+    let selectedScore = null;
+
+    const moodLabels = {
+        1:'Very Low', 2:'Very Low', 3:'Low', 4:'Low',
+        5:'Neutral', 6:'Neutral', 7:'Good', 8:'Good',
+        9:'Excellent', 10:'Excellent'
+    };
+
+    function selectMood(score) {
+        selectedScore = score;
+        document.querySelectorAll('.mood-emoji-btn').forEach(btn => btn.classList.remove('selected'));
+        document.querySelector(`[data-score="${score}"]`).classList.add('selected');
+        document.getElementById('scoreDisplay').style.display = 'block';
+        document.getElementById('scoreNumber').textContent = score;
+        document.getElementById('scoreLabelText').textContent = moodLabels[score];
+    }
+
+    async function submitMood() {
+        if (!selectedScore) {
+            showAlert('Please select your mood first.', 'warning');
+            return;
+        }
+
+        const notes = document.getElementById('moodNote').value;
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Saving...';
+
+        try {
+            const response = await fetch('/api/mood/checkin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({ moodScore: selectedScore, notes })
+            });
+
+            if (response.ok) {
+                showAlert('Mood check-in saved! 💚', 'success');
+                document.getElementById('moodNote').value = '';
+                selectedScore = null;
+                document.querySelectorAll('.mood-emoji-btn').forEach(b => b.classList.remove('selected'));
+                document.getElementById('scoreDisplay').style.display = 'none';
+                loadHistory();
+                loadWeekly();
+            } else {
+                showAlert('Failed to save. Please try again.', 'danger');
+            }
+        } catch (err) {
+            showAlert('Connection error. Please try again.', 'danger');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Save Check-in';
+        }
+    }
+
+    async function loadHistory() {
+        try {
+            const response = await fetch('/api/mood/history', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await response.json();
+            const container = document.getElementById('moodHistory');
+
+            if (!data.length) {
+                container.innerHTML = '<p class="text-muted text-center" style="font-size:0.85rem">No check-ins yet. Start today!</p>';
+                return;
+            }
+
+            container.innerHTML = data.slice(0, 7).map(entry => `
+                <div class="history-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-600" style="font-size:0.9rem">${getMoodEmoji(entry.moodScore)} Score: ${entry.moodScore}/10</span>
+                            <span class="mood-level-badge level-${entry.moodLevel} ms-2">${entry.moodLevel.replace('_',' ')}</span>
+                        </div>
+                        <div class="history-date">${formatDate(entry.entryDate)}</div>
+                    </div>
+                    ${entry.notes ? `<div class="text-muted mt-1" style="font-size:0.8rem">${entry.notes}</div>` : ''}
+                </div>`).join('');
+        } catch (err) {
+            console.error('Error loading history:', err);
+        }
+    }
+
+    async function loadWeekly() {
+        try {
+            const response = await fetch('/api/mood/weekly', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await response.json();
+            const container = document.getElementById('weeklySummary');
+
+            if (!data.length) {
+                container.innerHTML = '<p class="text-muted text-center" style="font-size:0.85rem">No data this week yet.</p>';
+                return;
+            }
+
+            const avg = (data.reduce((sum, e) => sum + e.moodScore, 0) / data.length).toFixed(1);
+            container.innerHTML = `
+                <div class="text-center mb-3">
+                    <div style="font-size:2.5rem;font-weight:700;color:#e94560">${avg}</div>
+                    <div class="text-muted" style="font-size:0.85rem">Weekly Average / 10</div>
+                </div>
+                <div class="d-flex justify-content-between">
+                    ${data.slice(-7).map(e => `
+                        <div class="text-center">
+                            <div style="font-size:1.2rem">${getMoodEmoji(e.moodScore)}</div>
+                            <div style="font-size:0.65rem;color:#adb5bd">${formatShortDate(e.entryDate)}</div>
+                        </div>`).join('')}
+                </div>`;
+        } catch (err) {
+            console.error('Error loading weekly:', err);
+        }
+    }
+
+    function getMoodEmoji(score) {
+        const emojis = {1:'😢',2:'😞',3:'😟',4:'😐',5:'😑',6:'🙂',7:'😊',8:'😄',9:'😁',10:'🤩'};
+        return emojis[score] || '😊';
+    }
+
+    function formatDate(dateStr) {
+        return new Date(dateStr).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'});
+    }
+
+    function formatShortDate(dateStr) {
+        return new Date(dateStr).toLocaleDateString('en-IN', {day:'numeric', month:'short'});
+    }
+
+    function showAlert(msg, type) {
+        document.getElementById('alertContainer').innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${msg}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`;
+        setTimeout(() => {
+            const alert = document.querySelector('.alert');
+            if (alert) alert.remove();
+        }, 3000);
+    }
+
+    // Load on page start
+    loadHistory();
+    loadWeekly();
+</script>
+</body>
+</html>
