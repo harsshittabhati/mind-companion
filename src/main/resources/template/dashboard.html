@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Dashboard — Mind Companion</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f8f9fa; }
+        .sidebar {
+            width: 250px; min-height: 100vh;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            position: fixed; top: 0; left: 0; z-index: 100; padding-top: 20px;
+        }
+        .sidebar .brand { color: #e94560; font-size: 1.4rem; font-weight: 700; padding: 10px 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar .brand span { color: #fff; }
+        .sidebar .nav-link { color: rgba(255,255,255,0.7); padding: 12px 20px; border-radius: 8px; margin: 2px 10px; transition: all 0.3s; font-size: 0.9rem; }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active { color: #fff; background: rgba(233,69,96,0.2); border-left: 3px solid #e94560; }
+        .sidebar .nav-link i { margin-right: 10px; }
+        .main-content { margin-left: 250px; padding: 20px; }
+        .top-navbar { background: #fff; padding: 12px 20px; margin-bottom: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .card { border: none; border-radius: 16px; box-shadow: 0 2px 15px rgba(0,0,0,0.06); }
+
+        /* Stat cards */
+        .stat-card { border-radius: 16px; padding: 20px; color: #fff; position: relative; overflow: hidden; }
+        .stat-card .stat-icon { font-size: 2.5rem; opacity: 0.3; position: absolute; right: 16px; top: 16px; }
+        .stat-card .stat-value { font-size: 2rem; font-weight: 700; }
+        .stat-card .stat-label { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+        .bg-gradient-red    { background: linear-gradient(135deg, #e94560, #c62a47); }
+        .bg-gradient-purple { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
+        .bg-gradient-green  { background: linear-gradient(135deg, #059669, #047857); }
+        .bg-gradient-blue   { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+
+        /* XP progress */
+        .xp-bar { height: 8px; border-radius: 4px; background: #e9ecef; overflow: hidden; }
+        .xp-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #e94560, #c62a47); transition: width 1s ease; }
+
+        /* Badge items */
+        .badge-item { display: flex; align-items: center; gap: 10px; padding: 10px; background: #f8f9fa; border-radius: 10px; margin-bottom: 8px; }
+        .badge-icon { font-size: 1.5rem; }
+        .badge-name { font-size: 0.85rem; font-weight: 600; }
+        .badge-desc { font-size: 0.75rem; color: #6c757d; }
+
+        /* PDF button */
+        .btn-pdf { background: linear-gradient(135deg, #e94560, #c62a47); border: none; border-radius: 10px; padding: 10px 20px; font-weight: 600; color: #fff; font-size: 0.85rem; }
+        .btn-pdf:hover { color: #fff; opacity: 0.9; transform: translateY(-1px); }
+
+        @media (max-width: 768px) { .sidebar { display: none; } .main-content { margin-left: 0; } }
+    </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <div class="brand">Mind <span>Companion</span></div>
+    <nav class="nav flex-column mt-3">
+        <a class="nav-link active" href="/dashboard"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+        <a class="nav-link" href="/chat"><i class="bi bi-chat-heart"></i> Chat with Serenity</a>
+        <a class="nav-link" href="/mood"><i class="bi bi-emoji-smile"></i> Mood Check-in</a>
+        <a class="nav-link" href="/journal"><i class="bi bi-journal-heart"></i> Journal</a>
+        <a class="nav-link" href="/profile"><i class="bi bi-person-circle"></i> Profile</a>
+        <hr style="border-color:rgba(255,255,255,0.1);margin:10px 20px;"/>
+        <a class="nav-link text-danger" href="/logout"><i class="bi bi-box-arrow-left"></i> Logout</a>
+    </nav>
+</div>
+
+<!-- Main content -->
+<div class="main-content">
+    <div class="top-navbar d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="mb-0 fw-bold">Dashboard</h5>
+            <small class="text-muted" id="greetingText"></small>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <a href="/api/analytics/report/pdf" class="btn-pdf" id="pdfBtn">
+                <i class="bi bi-file-earmark-pdf me-1"></i>Download Report
+            </a>
+            <span class="text-muted small"><i class="bi bi-person-circle me-1"></i><span id="usernameDisplay"></span></span>
+        </div>
+    </div>
+
+    <!-- Stat cards row -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="stat-card bg-gradient-red">
+                <i class="bi bi-chat-heart stat-icon"></i>
+                <div class="stat-value" id="totalMessages">—</div>
+                <div class="stat-label">Total Messages</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card bg-gradient-purple">
+                <i class="bi bi-emoji-smile stat-icon"></i>
+                <div class="stat-value" id="avgMood">—</div>
+                <div class="stat-label">Avg Mood (7 days)</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card bg-gradient-green">
+                <i class="bi bi-fire stat-icon"></i>
+                <div class="stat-value" id="streakDays">—</div>
+                <div class="stat-label">Day Streak</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-card bg-gradient-blue">
+                <i class="bi bi-star stat-icon"></i>
+                <div class="stat-value" id="totalXp">—</div>
+                <div class="stat-label">XP Points</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Mood timeline chart -->
+        <div class="col-lg-8">
+            <div class="card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-graph-up me-2 text-danger"></i>Mood Timeline (Last 30 Days)</h6>
+                </div>
+                <canvas id="moodChart" height="100"></canvas>
+            </div>
+        </div>
+
+        <!-- Sentiment breakdown chart -->
+        <div class="col-lg-4">
+            <div class="card p-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-pie-chart me-2 text-danger"></i>Sentiment Breakdown</h6>
+                <canvas id="sentimentChart" height="180"></canvas>
+                <div id="sentimentLegend" class="mt-3"></div>
+            </div>
+        </div>
+
+        <!-- XP & Level -->
+        <div class="col-lg-4">
+            <div class="card p-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-trophy me-2 text-danger"></i>Your Progress</h6>
+                <div class="text-center mb-3">
+                    <div style="font-size:2.5rem;font-weight:700;color:#e94560" id="levelDisplay">—</div>
+                    <div class="text-muted" style="font-size:0.85rem" id="levelTitle">Loading...</div>
+                </div>
+                <div class="d-flex justify-content-between mb-1" style="font-size:0.8rem">
+                    <span class="text-muted">XP Progress</span>
+                    <span id="xpProgress">0 / 100</span>
+                </div>
+                <div class="xp-bar">
+                    <div class="xp-fill" id="xpFill" style="width:0%"></div>
+                </div>
+                <div class="mt-3 text-center text-muted" style="font-size:0.8rem" id="xpToNext"></div>
+            </div>
+        </div>
+
+        <!-- Badges -->
+        <div class="col-lg-4">
+            <div class="card p-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-award me-2 text-danger"></i>Badges Earned</h6>
+                <div id="badgesList">
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-award" style="font-size:2rem"></i>
+                        <p class="mt-2 mb-0" style="font-size:0.85rem">No badges yet. Keep going!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Session stats -->
+        <div class="col-lg-4">
+            <div class="card p-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-bar-chart me-2 text-danger"></i>Session Stats</h6>
+                <div class="row g-2 text-center">
+                    <div class="col-6">
+                        <div style="font-size:1.5rem;font-weight:700;color:#e94560" id="positiveRate">—</div>
+                        <div class="text-muted" style="font-size:0.75rem">Positive Rate</div>
+                    </div>
+                    <div class="col-6">
+                        <div style="font-size:1.5rem;font-weight:700;color:#dc3545" id="crisisCount">—</div>
+                        <div class="text-muted" style="font-size:0.75rem">Crisis Alerts</div>
+                    </div>
+                    <div class="col-6">
+                        <div style="font-size:1.5rem;font-weight:700;color:#7c3aed" id="avgIntensity">—</div>
+                        <div class="text-muted" style="font-size:0.75rem">Avg Intensity</div>
+                    </div>
+                    <div class="col-6">
+                        <div style="font-size:1.5rem;font-weight:700;color:#059669" id="mood30">—</div>
+                        <div class="text-muted" style="font-size:0.75rem">Avg Mood (30d)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    const token = localStorage.getItem('token');
+    const username = localStorage.getItem('username') || 'User';
+    document.getElementById('usernameDisplay').textContent = username;
+    if (!token) window.location.href = '/login';
+
+    // Greeting
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    document.getElementById('greetingText').textContent = `${greeting}, ${username}! Here's your wellness overview.`;
+
+    // PDF download with auth
+    document.getElementById('pdfBtn').addEventListener('click', async function(e) {
+        e.preventDefault();
+        try {
+            const response = await fetch('/api/analytics/report/pdf', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'wellness-report.pdf';
+            a.click(); window.URL.revokeObjectURL(url);
+        } catch (err) { alert('Failed to download report.'); }
+    });
+
+    let moodChartInstance = null;
+    let sentimentChartInstance = null;
+
+    async function loadDashboard() {
+        try {
+            const [dashRes, gamRes] = await Promise.all([
+                fetch('/api/analytics/dashboard', { headers: { 'Authorization': 'Bearer ' + token } }),
+                fetch('/api/analytics/gamification', { headers: { 'Authorization': 'Bearer ' + token } })
+            ]);
+
+            const dash = await dashRes.json();
+            const gam = await gamRes.json();
+
+            // Stat cards
+            document.getElementById('totalMessages').textContent = dash.sessionStats?.totalMessages ?? 0;
+            document.getElementById('avgMood').textContent = (dash.moodAverage7Days?.averageMood ?? 0) + '/10';
+            document.getElementById('streakDays').textContent = (gam.streak ?? 0) + 'd';
+            document.getElementById('totalXp').textContent = gam.xpStatus?.totalXp ?? 0;
+
+            // Session stats
+            document.getElementById('positiveRate').textContent = (dash.sessionStats?.positiveRate ?? 0) + '%';
+            document.getElementById('crisisCount').textContent = dash.sessionStats?.crisisCount ?? 0;
+            document.getElementById('avgIntensity').textContent = dash.sessionStats?.averageIntensity ?? 0;
+            document.getElementById('mood30').textContent = (dash.moodAverage30Days?.averageMood ?? 0) + '/10';
+
+            // XP / Level
+            const xp = gam.xpStatus;
+            if (xp) {
+                document.getElementById('levelDisplay').textContent = 'Lvl ' + xp.level;
+                document.getElementById('levelTitle').textContent = xp.levelTitle;
+                document.getElementById('xpProgress').textContent = xp.xpInCurrentLevel + ' / 100';
+                document.getElementById('xpFill').style.width = xp.xpInCurrentLevel + '%';
+                document.getElementById('xpToNext').textContent = xp.xpToNextLevel + ' XP to next level';
+            }
+
+            // Badges
+            const badges = gam.badges || [];
+            document.getElementById('badgesList').innerHTML = badges.length
+                ? badges.map(b => `
+                    <div class="badge-item">
+                        <div class="badge-icon">${b.icon || '🏅'}</div>
+                        <div>
+                            <div class="badge-name">${b.name}</div>
+                            <div class="badge-desc">${b.description}</div>
+                        </div>
+                    </div>`).join('')
+                : '<p class="text-muted text-center" style="font-size:0.85rem">No badges yet. Keep going!</p>';
+
+            // Mood timeline chart
+            const timeline = dash.moodTimeline || [];
+            if (moodChartInstance) moodChartInstance.destroy();
+            moodChartInstance = new Chart(document.getElementById('moodChart'), {
+                type: 'line',
+                data: {
+                    labels: timeline.map(d => d.date),
+                    datasets: [{
+                        label: 'Mood Score',
+                        data: timeline.map(d => d.score),
+                        borderColor: '#e94560',
+                        backgroundColor: 'rgba(233,69,96,0.1)',
+                        borderWidth: 2.5,
+                        pointBackgroundColor: '#e94560',
+                        pointRadius: 4,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { min: 0, max: 10, grid: { color: '#f0f0f0' }, ticks: { stepSize: 2 } },
+                        x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 11 } } }
+                    }
+                }
+            });
+
+            // Sentiment chart
+            const sentiment = dash.sentimentBreakdown || {};
+            const sentColors = { POSITIVE:'#28a745', NEGATIVE:'#dc3545', NEUTRAL:'#6c757d', CRISIS:'#721c24' };
+            const labels = Object.keys(sentiment);
+            const values = Object.values(sentiment);
+            if (sentimentChartInstance) sentimentChartInstance.destroy();
+            sentimentChartInstance = new Chart(document.getElementById('sentimentChart'), {
+                type: 'doughnut',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: labels.map(l => sentColors[l] || '#adb5bd'),
+                        borderWidth: 0,
+                        hoverOffset: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    cutout: '65%',
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            document.getElementById('sentimentLegend').innerHTML = labels.map((l, i) => `
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div class="d-flex align-items-center gap-2">
+                        <div style="width:10px;height:10px;border-radius:50%;background:${sentColors[l] || '#adb5bd'}"></div>
+                        <span style="font-size:0.8rem">${l}</span>
+                    </div>
+                    <span style="font-size:0.8rem;font-weight:600">${values[i]}</span>
+                </div>`).join('');
+
+        } catch (err) {
+            console.error('Dashboard load error:', err);
+        }
+    }
+
+    loadDashboard();
+</script>
+</body>
+</html>
