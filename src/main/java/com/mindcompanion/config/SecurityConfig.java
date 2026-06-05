@@ -61,7 +61,6 @@ public class SecurityConfig {
 
                 // Public vs protected routes
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints — no token needed
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/css/**",
@@ -72,10 +71,14 @@ public class SecurityConfig {
                                 "/",
                                 "/login",
                                 "/register",
+                                "/dashboard",
+                                "/chat",
+                                "/mood",
+                                "/journal",
+                                "/profile",
                                 "/ws/**",
                                 "/chat-test.html"
                         ).permitAll()
-                        // Everything else requires authentication
                         .anyRequest().authenticated()
                 )
 
