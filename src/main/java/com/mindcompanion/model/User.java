@@ -85,6 +85,12 @@ public class User {
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
 
+    @Column(name = "retention_days", nullable = false)
+    private int retentionDays = 365; // default from app.chat.auto-delete-days
+
+    @Column(name = "confidential_mode", nullable = false)
+    private boolean confidentialMode = false;
+
     // Relationships
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
