@@ -1,225 +1,207 @@
+<div align="center">
+
 # 🧠 Mind Companion
 
-> An AI-powered mental wellness companion built with Spring Boot 3, featuring real-time chat, mood tracking, journaling, crisis detection, and gamification.
+### *Your AI-powered mental wellness companion — always available, always listening.*
+
+<br/>
+
+![Java](https://img.shields.io/badge/Java-21-orange?style=for-the-badge&logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5.14-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
+![Groq AI](https://img.shields.io/badge/Groq_AI-llama--3.3--70b-blueviolet?style=for-the-badge&logo=ai&logoColor=white)
+![JWT](https://img.shields.io/badge/JWT-Secured-black?style=for-the-badge&logo=jsonwebtokens&logoColor=white)
+![PWA](https://img.shields.io/badge/PWA-Ready-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![CI/CD](https://img.shields.io/badge/GitHub_Actions-CI%2FCD-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
+
+<br/>
+
+> **Built from scratch. No shortcuts. No templates.**
+> A production-grade full-stack application that takes mental health seriously — and shows it in every line of code.
+
+<br/>
+
+[Features](#-features) · [Tech Stack](#-tech-stack) · [Getting Started](#-getting-started) · [API Reference](#-api-reference) · [Security](#-security)
+
+</div>
 
 ---
 
-## Table of Contents
+## 💡 Why This Exists
 
-- [Overview](#overview)
-- [Why This Project?](#why-this-project)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
-- [API Reference](#api-reference)
-- [Database Schema](#database-schema)
-- [Security](#security)
-- [PWA Support](#pwa-support)
-- [Screenshots](#screenshots)
+Mental health support is broken. Therapy costs money most people don't have. Hotlines feel intimidating. And at 2 AM when you're at your lowest, there's often no one to turn to.
 
----
+**Mind Companion was built to change that.**
 
-## Overview
+Not as a replacement for professional help — but as the layer that exists *before* you hit rock bottom. A place to talk without judgment. A system that notices when something is wrong. A companion that shows up every single day, no matter what.
 
-Mind Companion is a full-stack mental health web application that provides users with an AI companion named **Serenity** — powered by Groq's `llama-3.3-70b-versatile` model. Users can chat with Serenity in real time, track their daily mood, write journal entries, and monitor their wellness through an analytics dashboard.
+Here's what makes this different from a chat app with a bot:
 
-The application includes a crisis detection system that automatically detects distress signals in chat messages, saves emergency alerts to the database, and sends HTML crisis emails to a designated emergency contact via Gmail SMTP.
+- 🔐 **Every message is AES-256 encrypted** before touching the database. Your conversations are private — cryptographically.
+- 🚨 **Crisis detection runs on every message.** If distress language is detected, an emergency contact is notified *automatically* — even if the user never asks for help.
+- 🗑️ **GDPR-compliant by design.** Users control exactly how long their data lives, and can erase everything in one API call.
+- 📴 **Confidential mode** means messages can be processed and responded to without ever being stored. Zero trace.
+- 📱 **Installable as a PWA.** Works offline. Works on mobile. Works everywhere.
+
+This project was also a deliberate engineering challenge — building something that handles security, real-time communication, AI integration, scheduled jobs, PDF generation, and a full frontend without reaching for shortcuts.
 
 ---
 
-## Why This Project?
+## ✨ Features
 
-Mental health is one of the most underserved areas in technology. Millions of people struggle silently every day — not because they don't want help, but because help isn't always accessible. Therapy is expensive, stigma is real, and reaching out to someone at 2 AM when you're at your lowest isn't always possible.
+<table>
+<tr>
+<td width="50%">
 
-Mind Companion was built around a simple idea: **what if support was always available?**
+### 🤖 Chat with Serenity
+Real-time AI conversations powered by **Groq's llama-3.3-70b-versatile**. Serenity uses CBT and mindfulness-based techniques, remembers your last 20 messages for context, and responds like a companion — not a search engine.
 
-Not as a replacement for professional therapy — Serenity is clear about that — but as a safe space where someone can express how they're feeling without judgment, track their emotional patterns over time, and know that if they're ever in crisis, someone will be notified.
+- WebSocket (STOMP + SockJS) for zero-latency chat
+- REST fallback for non-WebSocket clients
+- AES-256 CBC encryption on every stored message
+- **Confidential mode** — chat without leaving a trace
 
-A few specific problems this project addresses:
+</td>
+<td width="50%">
 
-**Accessibility.** Most mental health apps are paywalled or require professional involvement to get started. Mind Companion requires nothing except signing up.
+### 🚨 Crisis Detection & Alerts
+The feature that makes this more than just a chatbot. Every single message is scanned for crisis signals in real time.
 
-**Privacy.** Conversations about mental health are deeply personal. Every message is encrypted with AES-256 before being stored. Users can enable confidential mode so nothing is saved at all. Data retention is configurable and fully deletable under GDPR.
+- 12 crisis keyword patterns monitored
+- Auto-saves `EmergencyAlert` to database
+- HTML crisis email dispatched to emergency contact via Gmail SMTP
+- WebSocket push to `/queue/crisis` for instant UI alert
+- Zero user action required — the system acts on its own
 
-**Crisis response.** Existing chat apps don't act on what you say. Mind Companion does — if crisis language is detected, an emergency contact is notified immediately, without the user having to ask for help or even be aware it happened.
-
-**Continuity.** A journal, a mood log, a streak counter, badges — these aren't just features. They're ways of showing someone that their progress matters and that showing up consistently, even when it's hard, is worth something.
-
-This project was also a deliberate technical challenge: building a production-grade Spring Boot application with real security (JWT, AES-256, WebSocket auth), real-time communication, AI integration, scheduled jobs, PDF generation, and a PWA — all from scratch, without shortcuts.
-
-The result is an application that takes both the human problem and the engineering problem seriously.
-
----
-
-## Features
-
-### 🤖 AI Chat with Serenity
-- Real-time WebSocket chat (STOMP + SockJS)
-- REST fallback endpoint for HTTP-based clients
-- Groq API integration (`llama-3.3-70b-versatile`)
-- AES-256 CBC encryption for all stored messages
-- Conversation history context (last 20 messages sent to AI)
-- Confidential mode — messages processed but never written to disk
-
-### 🚨 Crisis Detection & Emergency Alerts
-- Keyword-based crisis detection on every message
-- Crisis keywords: `suicide`, `kill myself`, `want to die`, `self harm`, etc.
-- Automatic `EmergencyAlert` saved to database on detection
-- HTML crisis email sent to emergency contact via Gmail SMTP
-- Crisis alert marked as email-sent after successful delivery
-- WebSocket push to `/queue/crisis` for immediate frontend notification
-
-### 😊 Mood Tracking
-- Daily mood check-in (1–10 scale with mood level enum)
-- Weekly and full history endpoints
-- Average mood calculation over 7 and 30 days
-- Mood timeline data for Chart.js rendering
-
-### 📓 Journal
-- Daily journal entries with mood tags
-- AI-generated daily writing prompt
-- Full journal history
+</td>
+</tr>
+<tr>
+<td width="50%">
 
 ### 📊 Analytics Dashboard
-- Sentiment breakdown (POSITIVE, NEGATIVE, NEUTRAL, CRISIS)
-- Mood timeline chart (last 30 days)
-- Session stats: total messages, crisis count, positive rate, average intensity
-- PDF wellness report download (Apache PDFBox 3.0.2)
+Not just charts — genuine insight into emotional patterns over time.
+
+- Sentiment breakdown: POSITIVE / NEGATIVE / NEUTRAL / CRISIS
+- 30-day mood timeline rendered with Chart.js
+- Session stats: total messages, crisis count, positive rate, avg intensity
+- **PDF wellness report** generated with Apache PDFBox 3.0.2
+
+</td>
+<td width="50%">
 
 ### 🏆 Gamification
-- XP points awarded for chat, mood check-ins, and journal entries
-- Level system with titles (Newcomer → Serenity Master)
-- Activity streak tracking (current and longest)
-- Badge system with automatic awarding
+Because showing up consistently is hard, and it deserves recognition.
+
+- XP points for every chat, mood check-in, and journal entry
+- 10-level progression system (Newcomer → Serenity Master)
+- Current and longest streak tracking
+- Automatic badge awarding with unlock conditions
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 😊 Mood Tracking
+Daily emotional check-ins that build into a long-term picture of your mental wellness.
+
+- 1–10 mood scale with enum-based mood levels
+- 7-day and 30-day average calculations
+- Full history with Chart.js timeline visualization
+
+</td>
+<td width="50%">
 
 ### 🔒 GDPR & Privacy
-- Configurable data retention policy per user (default 365 days)
-- Scheduled auto-delete job runs daily at 2:00 AM
-- `DELETE /api/user/data` — erase all user data (keep account)
-- `DELETE /api/user/account` — full account deletion
-- Confidential mode: messages never persisted to database
+Privacy isn't an afterthought here. It's load-bearing.
 
-### 📱 PWA
-- `manifest.json` with name, icons, theme color, and shortcuts
-- Service worker with network-first caching strategy
-- Offline fallback page
-- "Add to Home Screen" support on mobile
+- Per-user configurable data retention (default 365 days)
+- Scheduled auto-delete job runs every night at 2:00 AM
+- One-call full data erasure (`DELETE /api/user/data`)
+- Complete account deletion with cascading cleanup
+- Confidential mode: process without persisting
 
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Language | Java 21 |
-| Framework | Spring Boot 3.5.14 |
-| Security | Spring Security + JWT (jjwt 0.12.6) |
-| Real-time | Spring WebSocket (STOMP + SockJS) |
-| Database | MySQL 8 + Spring Data JPA + Hibernate 6 |
-| AI | Groq API via OkHttp 4.12.0 |
-| Email | JavaMail (Gmail SMTP) |
-| PDF | Apache PDFBox 3.0.2 |
-| Frontend | Thymeleaf + Bootstrap 5.3.3 + Chart.js 4.4.0 |
-| Encryption | AES-256 CBC (`EncryptionUtil`) |
-| Build | Maven + Lombok 1.18.32 |
-| CI/CD | GitHub Actions |
-| Container | Docker (eclipse-temurin:21-jre-alpine) |
+</td>
+</tr>
+</table>
 
 ---
 
-## Project Structure
+## 🛠 Tech Stack
+
+| Layer | Technology | Why |
+|-------|-----------|-----|
+| Language | **Java 21** | Virtual threads, records, modern APIs |
+| Framework | **Spring Boot 3.5.14** | Production-grade, battle-tested |
+| Security | **Spring Security + JWT (jjwt 0.12.6)** | Stateless, scalable auth |
+| Real-time | **Spring WebSocket (STOMP + SockJS)** | True bidirectional communication |
+| Database | **MySQL 8 + Spring Data JPA + Hibernate 6** | Reliable, relational, proven |
+| AI | **Groq API (llama-3.3-70b-versatile) via OkHttp** | Fastest LLM inference available |
+| Encryption | **AES-256 CBC** | Military-grade message encryption |
+| Email | **JavaMail (Gmail SMTP)** | HTML crisis alerts |
+| PDF | **Apache PDFBox 3.0.2** | Wellness report generation |
+| Frontend | **Thymeleaf + Bootstrap 5.3 + Chart.js 4.4** | Clean, responsive, no JS framework overhead |
+| Build | **Maven + Lombok 1.18.32** | Fast builds, zero boilerplate |
+| CI/CD | **GitHub Actions** | Auto-build and artifact upload on every push |
+| Container | **Docker (eclipse-temurin:21-jre-alpine)** | Lightweight, portable, production-ready |
+
+---
+
+## 🏗 Architecture
 
 ```
-src/main/java/com/mindcompanion/
-├── config/
-│   ├── AppConfig.java
-│   ├── SecurityConfig.java
-│   ├── WebSocketConfig.java
-│   └── WebSocketAuthInterceptor.java
-├── controller/
-│   ├── AuthController.java
-│   ├── ChatController.java
-│   ├── MoodController.java
-│   ├── JournalController.java
-│   ├── EmergencyAlertController.java
-│   ├── AnalyticsController.java
-│   ├── UserDataController.java
-│   └── FrontendController.java
-├── service/
-│   ├── ChatService.java
-│   ├── MoodService.java
-│   ├── JournalService.java
-│   ├── EmergencyAlertService.java
-│   ├── EmailService.java
-│   ├── AnalyticsService.java
-│   ├── GamificationService.java
-│   └── PdfReportService.java
-├── model/
-│   ├── User.java
-│   ├── ChatMessage.java
-│   ├── MoodEntry.java
-│   ├── JournalEntry.java
-│   ├── EmergencyAlert.java
-│   ├── Badge.java
-│   ├── UserBadge.java
-│   └── enums/
-│       ├── Role.java          (PATIENT, THERAPIST, ADMIN)
-│       ├── SentimentType.java (POSITIVE, NEGATIVE, NEUTRAL, CRISIS)
-│       └── MoodLevel.java
-├── repository/          (7 JPA repositories)
-├── security/
-│   ├── UserDetailsImpl.java
-│   ├── UserDetailsServiceImpl.java
-│   └── jwt/
-│       ├── JwtUtils.java
-│       └── JwtAuthFilter.java
-├── scheduler/
-│   └── DataRetentionScheduler.java
-└── util/
-    └── EncryptionUtil.java
-
-src/main/resources/
-├── application.properties
-├── static/
-│   ├── manifest.json
-│   ├── service-worker.js
-│   ├── offline.html
-│   └── icons/
-│       ├── icon-192.png
-│       └── icon-512.png
-└── templates/
-    ├── layout/base.html
-    ├── auth/login.html
-    ├── auth/register.html
-    ├── dashboard.html
-    ├── chat.html
-    ├── mood.html
-    ├── journal.html
-    └── profile.html
+┌─────────────────────────────────────────────────────────┐
+│                     BROWSER / MOBILE                     │
+│         Thymeleaf · Bootstrap 5 · Chart.js · PWA        │
+└──────────────────────┬──────────────────────────────────┘
+                       │ HTTP / WebSocket (STOMP)
+┌──────────────────────▼──────────────────────────────────┐
+│                   SPRING BOOT 3.5                        │
+│                                                          │
+│  ┌──────────┐  ┌──────────┐  ┌──────────────────────┐  │
+│  │   Auth   │  │   Chat   │  │  Analytics + Gamif.  │  │
+│  │  (JWT)   │  │ Service  │  │      Service         │  │
+│  └──────────┘  └────┬─────┘  └──────────────────────┘  │
+│                     │                                    │
+│  ┌──────────────────▼──────────────────────────────┐   │
+│  │            Crisis Detection Engine               │   │
+│  │   keyword scan → alert → email → WS push        │   │
+│  └──────────────────────────────────────────────────┘   │
+│                                                          │
+│  ┌──────────┐  ┌──────────┐  ┌──────────────────────┐  │
+│  │  Groq AI │  │  Gmail   │  │  GDPR Scheduler      │  │
+│  │  (HTTP)  │  │  SMTP    │  │  (runs @ 2AM daily)  │  │
+│  └──────────┘  └──────────┘  └──────────────────────┘  │
+└──────────────────────┬──────────────────────────────────┘
+                       │ JPA / Hibernate
+┌──────────────────────▼──────────────────────────────────┐
+│                      MySQL 8                             │
+│  users · chat_messages · mood_entries · journal_entries  │
+│  emergency_alerts · badges · user_badges                 │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Java 21
+- Java 21+
 - Maven 3.8+
 - MySQL 8
-- A [Groq API key](https://console.groq.com)
-- A Gmail account with an [App Password](https://myaccount.google.com/apppasswords)
+- [Groq API key](https://console.groq.com) (free)
+- Gmail account with [App Password](https://myaccount.google.com/apppasswords)
 
-### 1. Clone the repository
+### 1. Clone
 
 ```bash
 git clone https://github.com/harsshittabhati/mind-companion.git
 cd mind-companion
 ```
 
-### 2. Create the MySQL database
+### 2. Create MySQL database
 
 ```sql
 CREATE DATABASE mind_companion_db;
@@ -230,33 +212,33 @@ FLUSH PRIVILEGES;
 
 ### 3. Set environment variables
 
-The app reads secrets from environment variables. Set these before running:
-
-```bash
+```powershell
 # Windows PowerShell
 $env:GROQ_API_KEY="gsk_your_key_here"
 $env:GMAIL_USERNAME="your@gmail.com"
 $env:GMAIL_APP_PASSWORD="your_app_password"
 ```
 
-Or configure them in your IDE's run configuration.
+```bash
+# Linux / macOS
+export GROQ_API_KEY=gsk_your_key_here
+export GMAIL_USERNAME=your@gmail.com
+export GMAIL_APP_PASSWORD=your_app_password
+```
 
-### 4. Run the application
+### 4. Run
 
 ```bash
 mvn spring-boot:run
 ```
 
-The app starts at `http://localhost:8080`.
+Open `http://localhost:8080` — register, login, and start chatting with Serenity.
 
 ### 5. Docker
 
 ```bash
-# Build
 mvn clean package -DskipTests
 docker build -t mind-companion .
-
-# Run
 docker run -p 8080:8080 \
   -e GROQ_API_KEY=your_key \
   -e GMAIL_USERNAME=your@gmail.com \
@@ -267,196 +249,172 @@ docker run -p 8080:8080 \
 
 ---
 
-## Environment Variables
+## 🔌 API Reference
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `GROQ_API_KEY` | Groq API key for AI responses | Yes |
-| `GMAIL_USERNAME` | Gmail address for sending crisis emails | Yes |
-| `GMAIL_APP_PASSWORD` | Gmail App Password (not your account password) | Yes |
+All endpoints require `Authorization: Bearer <token>` except `/api/auth/**`.
 
-These are injected via `${GROQ_API_KEY:default}` placeholders in `application.properties`. Never commit real keys.
-
----
-
-## API Reference
-
-All endpoints except `/api/auth/**` require a Bearer JWT token in the `Authorization` header.
-
-### Authentication
-
+### Auth
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/auth/register` | Register a new user |
-| `POST` | `/api/auth/login` | Login and receive JWT token |
-
-**Register body:**
-```json
-{
-  "username": "harshita",
-  "email": "harshita@example.com",
-  "password": "secret123",
-  "fullName": "Harshita Bhati"
-}
-```
-
-**Login response:**
-```json
-{
-  "token": "eyJhbGci...",
-  "id": 1,
-  "username": "harshita",
-  "email": "harshita@example.com",
-  "role": "ROLE_PATIENT"
-}
-```
+| `POST` | `/api/auth/register` | Register new user |
+| `POST` | `/api/auth/login` | Login → returns JWT |
 
 ### Chat
-
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/chat/send` | Send a message to Serenity (REST) |
-| `GET` | `/api/chat/history` | Get full decrypted chat history |
-| `DELETE` | `/api/chat/history` | Delete all chat messages |
-| `WS` | `/ws` → `/app/chat.send` | WebSocket chat endpoint |
-
-**Send body:**
-```json
-{
-  "message": "I'm feeling anxious today",
-  "sessionId": "session-abc123"
-}
-```
-
-**Response:**
-```json
-{
-  "message": "I hear you — anxiety can feel really overwhelming...",
-  "senderType": "BOT",
-  "sentiment": "NEGATIVE",
-  "intensityScore": 0.3,
-  "isCrisis": false,
-  "sessionId": "session-abc123",
-  "createdAt": "2026-06-06T10:30:00"
-}
-```
+| `POST` | `/api/chat/send` | Send message to Serenity |
+| `GET` | `/api/chat/history` | Decrypted chat history |
+| `DELETE` | `/api/chat/history` | Clear all messages |
+| `WS` | `/ws → /app/chat.send` | WebSocket endpoint |
 
 ### Mood
-
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/mood/checkin` | Submit today's mood |
-| `GET` | `/api/mood/today` | Get today's mood entry |
-| `GET` | `/api/mood/history` | Get full mood history |
-| `GET` | `/api/mood/weekly` | Get last 7 days |
+| `POST` | `/api/mood/checkin` | Submit mood (1–10) |
+| `GET` | `/api/mood/today` | Today's entry |
+| `GET` | `/api/mood/weekly` | Last 7 days |
+| `GET` | `/api/mood/history` | Full history |
 
 ### Journal
-
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/journal/entry` | Save a journal entry |
-| `GET` | `/api/journal/today` | Get today's entry |
-| `GET` | `/api/journal/history` | Get full journal history |
-| `GET` | `/api/journal/prompt` | Get today's AI writing prompt |
+| `POST` | `/api/journal/entry` | Save entry |
+| `GET` | `/api/journal/today` | Today's entry |
+| `GET` | `/api/journal/history` | Full history |
+| `GET` | `/api/journal/prompt` | AI writing prompt |
 
 ### Analytics
-
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/analytics/dashboard` | Full dashboard data |
-| `GET` | `/api/analytics/sentiment` | Sentiment breakdown counts |
-| `GET` | `/api/analytics/mood?days=7` | Average mood over N days |
-| `GET` | `/api/analytics/mood/timeline?days=30` | Daily mood scores for chart |
+| `GET` | `/api/analytics/dashboard` | Full dashboard payload |
+| `GET` | `/api/analytics/sentiment` | Sentiment counts |
+| `GET` | `/api/analytics/mood?days=30` | Avg mood over N days |
+| `GET` | `/api/analytics/mood/timeline` | Daily scores for chart |
 | `GET` | `/api/analytics/stats` | Session statistics |
 | `GET` | `/api/analytics/gamification` | XP, level, streak, badges |
-| `GET` | `/api/analytics/badges` | Earned badges list |
-| `GET` | `/api/analytics/streak` | Current activity streak |
-| `GET` | `/api/analytics/report/pdf` | Download PDF wellness report |
+| `GET` | `/api/analytics/report/pdf` | Download PDF report |
 
 ### Emergency Alerts
-
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/alerts/my` | Get current user's alerts |
-| `GET` | `/api/alerts/unresolved` | All unresolved alerts (admin) |
-| `PUT` | `/api/alerts/{id}/resolve` | Resolve an alert |
-| `GET` | `/api/alerts/count/unresolved` | Count of unresolved alerts |
+| `GET` | `/api/alerts/my` | My crisis alerts |
+| `GET` | `/api/alerts/unresolved` | All unresolved (admin) |
+| `PUT` | `/api/alerts/{id}/resolve` | Mark as resolved |
 
 ### Privacy & GDPR
-
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/user/privacy` | Get privacy settings |
-| `PUT` | `/api/user/privacy` | Update retention policy / confidential mode |
-| `DELETE` | `/api/user/data` | Erase all data (keep account) |
-| `DELETE` | `/api/user/account` | Delete account and all data |
+| `GET` | `/api/user/privacy` | Get settings |
+| `PUT` | `/api/user/privacy` | Update retention / confidential mode |
+| `DELETE` | `/api/user/data` | Erase all data |
+| `DELETE` | `/api/user/account` | Delete account |
 
 ---
 
-## Database Schema
+## 🔐 Security
 
-| Table | Description |
-|-------|-------------|
-| `users` | User accounts with gamification fields and privacy settings |
-| `chat_messages` | AES-256 encrypted chat messages with sentiment and crisis flag |
-| `mood_entries` | Daily mood check-ins with score and notes |
-| `journal_entries` | Journal entries with mood tags |
-| `emergency_alerts` | Crisis alerts with trigger keyword and resolution status |
-| `badges` | Badge definitions (seeded via SQL) |
-| `user_badges` | Many-to-many between users and badges with earned timestamp |
+Every layer of this application was built with security as a first-class concern — not bolted on afterward.
 
-Tables are auto-created by Hibernate (`ddl-auto=update`). No migration scripts needed for initial setup.
+```
+Request → JwtAuthFilter → Spring Security → Controller
+              ↓
+         Token validated against secret key
+         Username extracted and set in SecurityContext
+              ↓
+         All chat content → AES-256 CBC encrypt → MySQL
+         All chat retrieval → AES-256 CBC decrypt → response
+```
 
----
-
-## Security
-
-- **JWT authentication** — stateless, token expires in 24 hours
-- **BCrypt** password hashing
-- **AES-256 CBC** encryption for all chat message content at rest
-- **Spring Security** filter chain — all `/api/**` routes require authentication except `/api/auth/**`
-- **WebSocket authentication** via `WebSocketAuthInterceptor` — JWT validated on STOMP CONNECT
-- Secrets injected via environment variables — never hardcoded
-- `.env` excluded from git via `.gitignore`
+- **JWT** — stateless authentication, 24-hour expiry
+- **BCrypt** — password hashing with adaptive cost factor
+- **AES-256 CBC** — every chat message encrypted at rest
+- **WebSocket auth** — JWT validated on STOMP CONNECT via `WebSocketAuthInterceptor`
+- **Environment variables** — zero secrets in source code
+- **GDPR scheduler** — data deleted automatically based on user retention policy
 
 ---
 
-## PWA Support
+## 📱 PWA
 
-Mind Companion is installable as a Progressive Web App:
+Mind Companion is a fully installable Progressive Web App.
 
-- `manifest.json` — name, icons (192×192, 512×512), theme color `#6c63ff`, shortcuts to Chat and Mood
-- `service-worker.js` — network-first strategy, offline fallback to `offline.html`
-- API calls (`/api/`, `/ws`) are excluded from service worker caching
-- Apple touch icon and `apple-mobile-web-app-capable` meta tags for iOS
-
-To install: open the app in Chrome → address bar install button or browser menu → "Add to Home Screen".
-
----
-
-## CI/CD
-
-GitHub Actions workflow (`.github/workflows/deploy.yml`) runs on every push to `main`:
-
-1. Checkout code
-2. Set up Java 21 (Temurin)
-3. Build with Maven (`-DskipTests`)
-4. Upload JAR as build artifact (60.7 MB)
-
-The built JAR and `Dockerfile` are ready for deployment to Railway, Render, or any Docker-compatible platform.
+- Manifest with icons (192×192, 512×512), theme color, and app shortcuts
+- Service worker with network-first caching — works offline
+- Offline fallback page when no network is available
+- API and WebSocket calls excluded from caching
+- iOS-compatible (`apple-mobile-web-app-capable`, touch icon)
 
 ---
 
-## Crisis Resources
+## ⚙️ CI/CD
 
-Serenity always shares these resources when crisis language is detected:
+Every push to `main` triggers the GitHub Actions pipeline:
 
-- **iCall (India):** 9152987821
-- **Vandrevala Foundation:** 1860-2662-345
-- **AASRA:** 9820466627
+```
+push to main
+     ↓
+Checkout → Java 21 setup → mvn clean package -DskipTests
+     ↓
+JAR artifact uploaded (60.7 MB)
+     ↓
+Ready for deployment to Railway / Render / Docker host
+```
 
 ---
 
-## License
+## 🗄 Database Schema
 
-This project is for educational and portfolio purposes.
+| Table | Key Fields |
+|-------|-----------|
+| `users` | id, username, email, password (BCrypt), xp_points, current_streak, confidential_mode, data_retention_days |
+| `chat_messages` | id, content (AES-256), sender_type, sentiment, intensity_score, is_crisis, session_id |
+| `mood_entries` | id, mood_score, mood_level, notes, entry_date |
+| `journal_entries` | id, title, content, mood_tag, entry_date |
+| `emergency_alerts` | id, trigger_keyword, intensity_score, is_resolved, email_sent, resolved_at |
+| `badges` | id, name, description, icon, criteria |
+| `user_badges` | user_id, badge_id, earned_at |
+
+Tables are auto-created by Hibernate on first run. No migration scripts needed.
+
+---
+
+## 🆘 Crisis Resources
+
+Serenity automatically shares these when crisis language is detected:
+
+| Helpline | Number |
+|----------|--------|
+| iCall (India) | 9152987821 |
+| Vandrevala Foundation | 1860-2662-345 |
+| AASRA | 9820466627 |
+
+---
+
+## 📁 Project Structure
+
+```
+src/main/java/com/mindcompanion/
+├── config/          # Security, WebSocket, App config
+├── controller/      # 8 REST controllers
+├── service/         # 8 business logic services
+├── model/           # 7 JPA entities + 3 enums
+├── repository/      # 7 Spring Data repositories
+├── security/        # JWT filter, UserDetails impl
+├── scheduler/       # GDPR data retention job
+└── util/            # AES-256 encryption utility
+
+src/main/resources/
+├── templates/       # 8 Thymeleaf pages
+├── static/          # PWA assets (manifest, SW, icons)
+└── application.properties
+```
+
+---
+
+<div align="center">
+
+**Built with Java 21 · Spring Boot 3 · Groq AI · MySQL · Love**
+
+*If this project helped you or impressed you, consider giving it a ⭐*
+
+</div>
