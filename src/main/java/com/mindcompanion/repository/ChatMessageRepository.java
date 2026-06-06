@@ -1,18 +1,20 @@
 package com.mindcompanion.repository;
 
+import java.time.LocalDateTime;
 import com.mindcompanion.model.ChatMessage;
 import com.mindcompanion.model.enums.SentimentType;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
 public interface ChatMessageRepository
         extends JpaRepository<ChatMessage, Long> {
+
 
     // Get all messages for a user ordered by time
     List<ChatMessage> findByUserIdOrderByCreatedAtAsc(Long userId);
@@ -52,4 +54,10 @@ public interface ChatMessageRepository
     void deleteOldMessages(
             @Param("userId") Long userId,
             @Param("cutoffDate") LocalDateTime cutoffDate);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM ChatMessage m WHERE m.user.id = :userId AND m.createdAt < :cutoff")
+    int deleteByUserIdAndCreatedAtBefore(@Param("userId") Long userId,
+                                         @Param("cutoff") LocalDateTime cutoff);
 }

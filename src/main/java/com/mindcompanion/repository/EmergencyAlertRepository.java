@@ -18,4 +18,6 @@ public interface EmergencyAlertRepository extends JpaRepository<EmergencyAlert, 
 
     // Alerts for a user where email hasn't been sent yet
     List<EmergencyAlert> findByUserAndEmailSentFalse(User user);
+
+    void deleteAllByUserId(Long userId);
 }

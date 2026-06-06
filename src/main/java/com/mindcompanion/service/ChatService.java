@@ -33,8 +33,8 @@ public class ChatService {
     private final UserRepository userRepository;
     private final EncryptionUtil encryptionUtil;
     private final ObjectMapper objectMapper;
-    private final EmergencyAlertService emergencyAlertService;  // NEW
-    private final EmailService emailService;                    // NEW
+    private final EmergencyAlertService emergencyAlertService;
+    private final EmailService emailService;
 
     @Value("${openai.api.key}")
     private String openAiApiKey;
@@ -45,14 +45,12 @@ public class ChatService {
     @Value("${openai.max-tokens}")
     private int maxTokens;
 
-    // Crisis keywords to watch for
     private static final Set<String> CRISIS_KEYWORDS = Set.of(
             "suicide", "kill myself", "end my life", "want to die",
             "can't go on", "no reason to live", "self harm", "hurt myself",
             "hopeless", "worthless", "give up", "can't take it anymore"
     );
 
-    // AI therapist system prompt
     private static final String SYSTEM_PROMPT = """
         You are a warm and friendly AI mental health companion named "Serenity".
         Your role is to provide emotional support, active listening, and helpful
@@ -78,10 +76,8 @@ public class ChatService {
     @Transactional
     public ChatResponse processMessage(ChatRequest request, String username) {
 
-        // Get user from database
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException(
-                        "User not found: " + username));
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
 
         String userMessage = request.getMessage();
         String sessionId = request.getSessionId();
@@ -91,7 +87,9 @@ public class ChatService {
         double intensityScore = calculateIntensity(userMessage);
         boolean isCrisis = detectCrisis(userMessage);
 
-        // 2. Save user message (encrypted)
+        // 2. Save user message (encrypted) — skip if confidential mode is on
+        boolean confidential = Boolean.TRUE.equals(user.getConfidentialMode());
+
         ChatMessage userChatMessage = ChatMessage.builder()
                 .senderType("USER")
                 .content(encryptionUtil.encrypt(userMessage))
@@ -102,7 +100,9 @@ public class ChatService {
                 .user(user)
                 .build();
 
-        chatMessageRepository.save(userChatMessage);
+        if (!confidential) {
+            chatMessageRepository.save(userChatMessage);
+        }
 
         // 3. Handle crisis — save alert + send email
         if (isCrisis) {
@@ -112,7 +112,7 @@ public class ChatService {
         // 4. Get AI response from Groq
         String aiReply = getAiResponse(userMessage, user);
 
-        // 5. Save AI response (encrypted)
+        // 5. Save AI response (encrypted) — skip if confidential mode is on
         ChatMessage botChatMessage = ChatMessage.builder()
                 .senderType("BOT")
                 .content(encryptionUtil.encrypt(aiReply))
@@ -120,7 +120,9 @@ public class ChatService {
                 .user(user)
                 .build();
 
-        chatMessageRepository.save(botChatMessage);
+        if (!confidential) {
+            chatMessageRepository.save(botChatMessage);
+        }
 
         // 6. Build response
         ChatResponse response = ChatResponse.builder()
@@ -146,15 +148,8 @@ public class ChatService {
         return response;
     }
 
-    // ─── Crisis Handler ──────────────────────────────
-    /**
-     * Saves an emergency alert to DB and sends email to emergency contact.
-     * Runs inside the same transaction as processMessage.
-     * Email failure is caught and logged — it never breaks the chat flow.
-     */
     private void handleCrisis(User user, String userMessage, double intensityScore) {
 
-        // Find which keyword triggered the alert
         String triggeredKeyword = CRISIS_KEYWORDS.stream()
                 .filter(userMessage.toLowerCase()::contains)
                 .findFirst()
@@ -162,37 +157,22 @@ public class ChatService {
 
         String triggerReason = "Crisis keyword detected in chat message";
 
-        // Save alert to database
         EmergencyAlert alert = emergencyAlertService.createAlert(
-                user,
-                triggerReason,
-                triggeredKeyword,
-                intensityScore
-        );
+                user, triggerReason, triggeredKeyword, intensityScore);
 
         log.warn("🚨 Crisis detected for user='{}', keyword='{}', alertId={}",
                 user.getUsername(), triggeredKeyword, alert.getId());
 
-        // Send email alert — wrapped in try/catch so email failure
-        // never stops the chat response from reaching the user
         try {
             emailService.sendCrisisAlertEmail(
-                    user.getUsername(),
-                    triggeredKeyword,
-                    triggerReason
-            );
-
-            // Mark alert as email-sent in DB
+                    user.getUsername(), triggeredKeyword, triggerReason);
             emergencyAlertService.markEmailSent(alert.getId());
-
         } catch (Exception e) {
-            log.error("⚠️ Crisis alert email failed for user='{}', " +
-                            "alertId={}: {}", user.getUsername(), alert.getId(),
-                    e.getMessage());
+            log.error("⚠️ Crisis alert email failed for user='{}', alertId={}: {}",
+                    user.getUsername(), alert.getId(), e.getMessage());
         }
     }
 
-    // ─── Sentiment Analysis ──────────────────────────
     private SentimentType analyzeSentiment(String message) {
         String lower = message.toLowerCase();
 
@@ -215,7 +195,6 @@ public class ChatService {
         return SentimentType.NEUTRAL;
     }
 
-    // ─── Intensity Score ─────────────────────────────
     private double calculateIntensity(String message) {
         String lower = message.toLowerCase();
         long matches = List.of(
@@ -226,39 +205,28 @@ public class ChatService {
         return Math.min(matches * 0.15, 1.0);
     }
 
-    // ─── Crisis Detection ────────────────────────────
     private boolean detectCrisis(String message) {
         String lower = message.toLowerCase();
         return CRISIS_KEYWORDS.stream().anyMatch(lower::contains);
     }
 
-    // ─── Groq API Call ───────────────────────────────
     private String getAiResponse(String userMessage, User user) {
         try {
             log.debug("Calling Groq API with model: {}", openAiModel);
-            log.debug("API key starts with: {}",
-                    openAiApiKey != null && openAiApiKey.length() > 10
-                            ? openAiApiKey.substring(0, 10) + "..."
-                            : "KEY IS EMPTY OR NULL");
 
-            // Get last 20 messages for context
             List<ChatMessage> history = chatMessageRepository
                     .findTop20ByUserIdOrderByCreatedAtDesc(user.getId());
 
-            // Build messages array
             List<Object> messages = new ArrayList<>();
 
-            // System prompt
             messages.add(new java.util.HashMap<>() {{
                 put("role", "system");
                 put("content", SYSTEM_PROMPT);
             }});
 
-            // Add history (reversed — oldest first)
             for (int i = history.size() - 1; i >= 0; i--) {
                 ChatMessage msg = history.get(i);
-                String role = msg.getSenderType()
-                        .equals("USER") ? "user" : "assistant";
+                String role = msg.getSenderType().equals("USER") ? "user" : "assistant";
                 String content = encryptionUtil.decrypt(msg.getContent());
                 final String r = role;
                 final String c = content;
@@ -268,13 +236,11 @@ public class ChatService {
                 }});
             }
 
-            // Add current message
             messages.add(new java.util.HashMap<>() {{
                 put("role", "user");
                 put("content", userMessage);
             }});
 
-            // Build request body
             String requestBody = objectMapper.writeValueAsString(
                     new java.util.HashMap<>() {{
                         put("model", openAiModel);
@@ -284,7 +250,6 @@ public class ChatService {
                     }}
             );
 
-            // Build HTTP client with timeouts
             OkHttpClient client = new OkHttpClient.Builder()
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
@@ -295,36 +260,24 @@ public class ChatService {
                     .url("https://api.groq.com/openai/v1/chat/completions")
                     .header("Authorization", "Bearer " + openAiApiKey)
                     .header("Content-Type", "application/json")
-                    .post(RequestBody.create(
-                            requestBody,
-                            MediaType.parse("application/json")
-                    ))
+                    .post(RequestBody.create(requestBody, MediaType.parse("application/json")))
                     .build();
 
-            try (Response httpResponse = client.newCall(httpRequest)
-                    .execute()) {
-
+            try (Response httpResponse = client.newCall(httpRequest).execute()) {
                 String responseBodyStr = httpResponse.body() != null
                         ? httpResponse.body().string() : "empty body";
 
                 if (httpResponse.isSuccessful()) {
                     JsonNode jsonNode = objectMapper.readTree(responseBodyStr);
                     String reply = jsonNode
-                            .path("choices")
-                            .path(0)
-                            .path("message")
-                            .path("content")
+                            .path("choices").path(0)
+                            .path("message").path("content")
                             .asText("");
 
-                    if (!reply.isEmpty()) {
-                        return reply;
-                    } else {
-                        log.error("Groq response had empty content. " +
-                                "Full body: {}", responseBodyStr);
-                    }
+                    if (!reply.isEmpty()) return reply;
+                    else log.error("Groq response had empty content. Full body: {}", responseBodyStr);
                 } else {
-                    log.error("Groq API failed. Code: {}, Body: {}",
-                            httpResponse.code(), responseBodyStr);
+                    log.error("Groq API failed. Code: {}, Body: {}", httpResponse.code(), responseBodyStr);
                 }
             }
 
@@ -332,9 +285,7 @@ public class ChatService {
             log.error("Groq API error: {}", e.getMessage(), e);
         }
 
-        // Fallback response
         return "I'm here for you. It sounds like you're going through " +
-                "something difficult. Would you like to tell me more " +
-                "about how you're feeling?";
+                "something difficult. Would you like to tell me more about how you're feeling?";
     }
 }
