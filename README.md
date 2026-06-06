@@ -30,13 +30,25 @@
 
 ## 💡 Why This Exists
 
-Mental health support is broken. Therapy costs money most people don't have. Hotlines feel intimidating. And at 2 AM when you're at your lowest, there's often no one to turn to.
+Mental health is one of the most underserved areas in technology. Millions of people struggle silently every day — not because they don't want help, but because help isn't always accessible. Therapy is expensive, stigma is real, and reaching out to someone at 2 AM when you're at your lowest isn't always possible.
 
-**Mind Companion was built to change that.**
+Mind Companion was built around a simple idea: **what if support was always available?**
 
-Not as a replacement for professional help — but as the layer that exists *before* you hit rock bottom. A place to talk without judgment. A system that notices when something is wrong. A companion that shows up every single day, no matter what.
+Not as a replacement for professional therapy — Serenity is clear about that — but as a safe space where someone can express how they're feeling without judgment, track their emotional patterns over time, and know that if they're ever in crisis, someone will be notified.
 
-Here's what makes this different from a chat app with a bot:
+A few specific problems this project addresses:
+
+**Accessibility.** Most mental health apps are paywalled or require professional involvement to get started. Mind Companion requires nothing except signing up.
+
+**Privacy.** Conversations about mental health are deeply personal. Every message is encrypted with AES-256 before being stored. Users can enable confidential mode so nothing is saved at all. Data retention is configurable and fully deletable under GDPR.
+
+**Crisis response.** Existing chat apps don't act on what you say. Mind Companion does — if crisis language is detected, an emergency contact is notified immediately, without the user having to ask for help or even be aware it happened.
+
+**Continuity.** A journal, a mood log, a streak counter, badges — these aren't just features. They're ways of showing someone that their progress matters and that showing up consistently, even when it's hard, is worth something.
+
+This project was also a deliberate technical challenge: building a production-grade Spring Boot application with real security (JWT, AES-256, WebSocket auth), real-time communication, AI integration, scheduled jobs, PDF generation, and a PWA — all from scratch, without shortcuts.
+
+The result is an application that takes both the human problem and the engineering problem seriously.
 
 - 🔐 **Every message is AES-256 encrypted** before touching the database. Your conversations are private — cryptographically.
 - 🚨 **Crisis detection runs on every message.** If distress language is detected, an emergency contact is notified *automatically* — even if the user never asks for help.
