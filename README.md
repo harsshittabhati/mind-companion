@@ -162,36 +162,33 @@ Privacy isn't an afterthought here. It's load-bearing.
 
 ## 🏗 Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                     BROWSER / MOBILE                     │
-│         Thymeleaf · Bootstrap 5 · Chart.js · PWA        │
-└──────────────────────┬──────────────────────────────────┘
-                       │ HTTP / WebSocket (STOMP)
-┌──────────────────────▼──────────────────────────────────┐
-│                   SPRING BOOT 3.5                        │
-│                                                          │
-│  ┌──────────┐  ┌──────────┐  ┌──────────────────────┐  │
-│  │   Auth   │  │   Chat   │  │  Analytics + Gamif.  │  │
-│  │  (JWT)   │  │ Service  │  │      Service         │  │
-│  └──────────┘  └────┬─────┘  └──────────────────────┘  │
-│                     │                                    │
-│  ┌──────────────────▼──────────────────────────────┐   │
-│  │            Crisis Detection Engine               │   │
-│  │   keyword scan → alert → email → WS push        │   │
-│  └──────────────────────────────────────────────────┘   │
-│                                                          │
-│  ┌──────────┐  ┌──────────┐  ┌──────────────────────┐  │
-│  │  Groq AI │  │  Gmail   │  │  GDPR Scheduler      │  │
-│  │  (HTTP)  │  │  SMTP    │  │  (runs @ 2AM daily)  │  │
-│  └──────────┘  └──────────┘  └──────────────────────┘  │
-└──────────────────────┬──────────────────────────────────┘
-                       │ JPA / Hibernate
-┌──────────────────────▼──────────────────────────────────┐
-│                      MySQL 8                             │
-│  users · chat_messages · mood_entries · journal_entries  │
-│  emergency_alerts · badges · user_badges                 │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Browser["🌐 Browser / Mobile\nThymeleaf · Bootstrap 5 · Chart.js · PWA"]
+
+    subgraph SpringBoot ["⚙️ Spring Boot 3.5"]
+        Auth["🔐 Auth Service\nJWT · BCrypt"]
+        Chat["💬 Chat Service\nAES-256 · Groq API"]
+        Analytics["📊 Analytics + Gamification\nXP · Badges · Streak"]
+        Crisis["🚨 Crisis Detection Engine\nKeyword scan → Alert → Email → WS push"]
+        GDPR["🗑️ GDPR Scheduler\nAuto-delete @ 2AM daily"]
+    end
+
+    subgraph External ["🌍 External Services"]
+        Groq["🤖 Groq AI\nllama-3.3-70b-versatile"]
+        Gmail["📧 Gmail SMTP\nCrisis alert emails"]
+    end
+
+    DB["🗄️ MySQL 8\nusers · chat_messages · mood_entries\njournal_entries · emergency_alerts · badges"]
+
+    Browser -- "HTTP / WebSocket STOMP" --> SpringBoot
+    Chat --> Crisis
+    Crisis --> Gmail
+    Auth --> DB
+    Chat --> Groq
+    Chat --> DB
+    Analytics --> DB
+    GDPR --> DB
 ```
 
 ---
