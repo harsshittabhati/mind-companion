@@ -34,8 +34,7 @@ public class SecurityConfig {
 
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider =
-                new DaoAuthenticationProvider();
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
@@ -48,46 +47,32 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http)
-            throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // Disable CSRF (we use JWT, not sessions)
                 .csrf(AbstractHttpConfigurer::disable)
-
-                // Stateless session (JWT handles state)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-
-                // Public vs protected routes
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/api/auth/**",
-                                "/css/**",
-                                "/js/**",
-                                "/images/**",
-                                "/icons/**",
-                                "/manifest.json",
-                                "/service-worker.js",
-                                "/offline.html",
-                                "/",
-                                "/login",
-                                "/register",
-                                "/dashboard",
-                                "/chat",
-                                "/mood",
-                                "/journal",
-                                "/profile",
-                                "/ws/**",
-                                "/chat-test.html"
-                        ).permitAll()
+                        // Public auth endpoints
+                        .requestMatchers("/api/auth/**").permitAll()
+                        // Static resources
+                        .requestMatchers("/css/**", "/js/**", "/images/**", "/icons/**").permitAll()
+                        // PWA files
+                        .requestMatchers("/manifest.json", "/service-worker.js", "/offline.html").permitAll()
+                        // Public pages
+                        .requestMatchers("/", "/login", "/register").permitAll()
+                        // Thymeleaf pages — served by FrontendController, JWT checked client-side
+                        .requestMatchers("/dashboard", "/chat", "/mood", "/journal", "/profile").permitAll()
+                        // WebSocket
+                        .requestMatchers("/ws/**").permitAll()
+                        // Static test file
+                        .requestMatchers("/chat-test.html").permitAll()
+                        // All API endpoints require JWT
                         .anyRequest().authenticated()
                 )
-
-                // Register our JWT filter
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthFilter,
-                        UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
