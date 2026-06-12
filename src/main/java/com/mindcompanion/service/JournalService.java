@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,101 +26,60 @@ public class JournalService {
     private final JournalEntryRepository journalEntryRepository;
     private final UserRepository userRepository;
     private final EncryptionUtil encryptionUtil;
+    private final Random random = new Random();
 
-    // ─── Save journal entry ──────────────────────────
     @Transactional
-    public JournalResponse saveJournalEntry(JournalRequest request,
-                                            String username) {
+    public JournalResponse saveJournalEntry(JournalRequest request, String username) {
 
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException(
-                        "User not found: " + username));
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
 
-        LocalDate today = LocalDate.now();
-        boolean alreadyJournaled = journalEntryRepository
-                .existsByUserIdAndEntryDate(user.getId(), today);
-
-        // Analyze sentiment of journal content
         SentimentType sentiment = analyzeSentiment(request.getContent());
-
-        // Generate AI summary and tags
-        String aiSummary = generateSummary(
-                request.getContent(), sentiment);
+        String aiSummary = generateSummary(request.getContent(), sentiment);
         String tags = extractTags(request.getContent());
 
-        if (alreadyJournaled) {
-            // Update existing entry
-            JournalEntry existing = journalEntryRepository
-                    .findByUserIdAndEntryDate(user.getId(), today)
-                    .orElseThrow();
-            existing.setContent(
-                    encryptionUtil.encrypt(request.getContent()));
-            existing.setSentiment(sentiment);
-            existing.setAiSummary(aiSummary);
-            existing.setTags(tags);
-            JournalEntry saved = journalEntryRepository.save(existing);
-            log.debug("Updated journal entry for user: {}", username);
-            return buildResponse(saved, user.getId(), true);
-        }
-
-        // Create new entry
+        // Always create a new entry — allow multiple per day
         JournalEntry entry = JournalEntry.builder()
+                .title(request.getTitle())
                 .content(encryptionUtil.encrypt(request.getContent()))
                 .prompt(request.getPrompt())
                 .sentiment(sentiment)
                 .aiSummary(aiSummary)
                 .tags(tags)
-                .entryDate(today)
+                .entryDate(LocalDate.now())
                 .user(user)
                 .build();
 
         JournalEntry saved = journalEntryRepository.save(entry);
         log.debug("Saved journal entry for user: {}", username);
 
-        // Update user streak
         updateStreak(user);
 
         return buildResponse(saved, user.getId(), false);
     }
 
-    // ─── Get today's journal entry ───────────────────
     public JournalResponse getTodayEntry(String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException(
-                        "User not found: " + username));
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
 
         return journalEntryRepository
-                .findByUserIdAndEntryDate(
-                        user.getId(), LocalDate.now())
-                .map(entry -> buildResponse(
-                        entry, user.getId(), true))
+                .findByUserIdAndEntryDate(user.getId(), LocalDate.now())
+                .map(entry -> buildResponse(entry, user.getId(), true))
                 .orElse(null);
     }
 
-    // ─── Get journal history ─────────────────────────
     public List<JournalResponse> getJournalHistory(String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException(
-                        "User not found: " + username));
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
 
         return journalEntryRepository
                 .findByUserIdOrderByEntryDateDesc(user.getId())
                 .stream()
-                .map(entry -> buildResponse(
-                        entry, user.getId(), true))
+                .map(entry -> buildResponse(entry, user.getId(), true))
                 .collect(Collectors.toList());
     }
 
-    // ─── Get today's AI journal prompt ──────────────
     public String getTodayPrompt(String username) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException(
-                        "User not found: " + username));
-
-        Long totalEntries = journalEntryRepository
-                .countByUserId(user.getId());
-
-        // Rotate through prompts based on entry count
         List<String> prompts = List.of(
                 "What are three things you're grateful for today?",
                 "Describe a moment today that made you smile.",
@@ -130,14 +90,17 @@ public class JournalService {
                 "What boundaries did you set or need to set today?",
                 "Describe your ideal version of tomorrow.",
                 "What drained your energy today? What gave you energy?",
-                "Write about something you're proud of this week."
+                "Write about something you're proud of this week.",
+                "What's one thing you wish someone knew about how you're feeling?",
+                "If today were a color, what would it be and why?",
+                "What does your inner critic say most often? Is it true?",
+                "When did you last feel truly at peace? What were you doing?",
+                "What small act of kindness did you give or receive today?"
         );
 
-        int index = (int) (totalEntries % prompts.size());
-        return prompts.get(index);
+        return "{\"prompt\": \"" + prompts.get(random.nextInt(prompts.size())) + "\"}";
     }
 
-    // ─── Sentiment analysis ──────────────────────────
     private SentimentType analyzeSentiment(String content) {
         String lower = content.toLowerCase();
 
@@ -158,41 +121,29 @@ public class JournalService {
         return SentimentType.NEUTRAL;
     }
 
-    // ─── Generate AI summary ─────────────────────────
-    private String generateSummary(String content,
-                                   SentimentType sentiment) {
+    private String generateSummary(String content, SentimentType sentiment) {
         int wordCount = content.split("\\s+").length;
-
         return switch (sentiment) {
-            case POSITIVE -> "Your entry reflects a positive mindset. " +
-                    "You expressed " + wordCount + " words of reflection.";
-            case NEGATIVE -> "Your entry shows you're processing " +
-                    "some difficult emotions. That takes courage. " +
-                    wordCount + " words written.";
-            case CRISIS -> "Your entry contains some concerning themes. " +
-                    "Please consider reaching out for support.";
-            default -> "A thoughtful reflection of " +
-                    wordCount + " words.";
+            case POSITIVE -> "Your entry reflects a positive mindset. You expressed " + wordCount + " words of reflection.";
+            case NEGATIVE -> "Your entry shows you're processing some difficult emotions. That takes courage. " + wordCount + " words written.";
+            case CRISIS -> "Your entry contains some concerning themes. Please consider reaching out for support.";
+            default -> "A thoughtful reflection of " + wordCount + " words.";
         };
     }
 
-    // ─── Extract tags from content ───────────────────
     private String extractTags(String content) {
         String lower = content.toLowerCase();
-
         List<String> possibleTags = List.of(
                 "work", "family", "relationship", "health", "sleep",
                 "anxiety", "depression", "stress", "gratitude", "exercise",
                 "meditation", "food", "friends", "money", "future",
                 "past", "self-care", "anger", "fear", "joy"
         );
-
         return possibleTags.stream()
                 .filter(lower::contains)
                 .collect(Collectors.joining(","));
     }
 
-    // ─── Update user streak ──────────────────────────
     @Transactional
     private void updateStreak(User user) {
         LocalDate yesterday = LocalDate.now().minusDays(1);
@@ -208,14 +159,10 @@ public class JournalService {
         if (user.getCurrentStreak() > user.getLongestStreak()) {
             user.setLongestStreak(user.getCurrentStreak());
         }
-
         userRepository.save(user);
     }
 
-    // ─── Build JournalResponse ───────────────────────
-    private JournalResponse buildResponse(JournalEntry entry,
-                                          Long userId,
-                                          boolean decrypt) {
+    private JournalResponse buildResponse(JournalEntry entry, Long userId, boolean decrypt) {
         Long totalEntries = journalEntryRepository.countByUserId(userId);
         boolean journaledToday = journalEntryRepository
                 .existsByUserIdAndEntryDate(userId, LocalDate.now());
@@ -226,6 +173,7 @@ public class JournalService {
 
         return JournalResponse.builder()
                 .id(entry.getId())
+                .title(entry.getTitle())
                 .content(content)
                 .prompt(entry.getPrompt())
                 .sentiment(entry.getSentiment())

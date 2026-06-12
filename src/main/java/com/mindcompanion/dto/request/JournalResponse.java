@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 public class JournalResponse {
 
     private Long id;
+    private String title;
     private String content;
     private String prompt;
     private SentimentType sentiment;

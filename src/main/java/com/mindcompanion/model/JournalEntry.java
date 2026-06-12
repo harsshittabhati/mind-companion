@@ -22,6 +22,9 @@ public class JournalEntry {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "title")
+    private String title;
+
     // AI generated prompt that inspired this entry
     @Column(name = "prompt", columnDefinition = "TEXT")
     private String prompt;
