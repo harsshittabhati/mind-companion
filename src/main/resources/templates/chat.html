@@ -188,25 +188,52 @@
     let sessions = {}; // sessionId -> { title, messages[], date }
 
     // ── Init ─────────────────────────────────────────
-    window.addEventListener('load', () => {
-        loadSessionsFromStorage();
+    window.addEventListener('load', async () => {
+        await loadHistoryFromServer();
         renderSessionsList();
-
-        // Auto-open last session if exists
         const sessionIds = Object.keys(sessions);
         if (sessionIds.length > 0) {
             openSession(sessionIds[sessionIds.length - 1]);
         }
     });
 
-    // ── Session storage (localStorage) ───────────────
-    function loadSessionsFromStorage() {
-        const saved = localStorage.getItem('mc_sessions');
-        sessions = saved ? JSON.parse(saved) : {};
-    }
+    // ── Load history from DB ──────────────────────────
+    async function loadHistoryFromServer() {
+        try {
+            const response = await fetch('/api/chat/history', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (!response.ok) return;
+            const messages = await response.json();
 
-    function saveSessionsToStorage() {
-        localStorage.setItem('mc_sessions', JSON.stringify(sessions));
+            sessions = {};
+            messages.forEach(msg => {
+                const sid = msg.sessionId || 'default';
+                if (!sessions[sid]) {
+                    sessions[sid] = {
+                        title: 'New conversation',
+                        messages: [],
+                        date: msg.createdAt
+                    };
+                }
+                if (msg.senderType === 'USER' && sessions[sid].title === 'New conversation') {
+                    sessions[sid].title = msg.message.substring(0, 40) +
+                        (msg.message.length > 40 ? '...' : '');
+                }
+                sessions[sid].messages.push({
+                    text: msg.message,
+                    type: msg.senderType === 'USER' ? 'user' : 'bot',
+                    sentiment: msg.sentiment,
+                    time: msg.createdAt
+                });
+                // Keep latest date for session
+                if (msg.createdAt > sessions[sid].date) {
+                    sessions[sid].date = msg.createdAt;
+                }
+            });
+        } catch (err) {
+            console.error('Failed to load history:', err);
+        }
     }
 
     // ── Start new chat ────────────────────────────────
@@ -217,7 +244,6 @@
             messages: [],
             date: new Date().toISOString()
         };
-        saveSessionsToStorage();
         renderSessionsList();
         renderMessages([]);
         showWelcomeMessage();
@@ -230,7 +256,6 @@
         currentSessionId = sessionId;
         const session = sessions[sessionId];
         if (!session) return;
-
         renderMessages(session.messages);
         document.getElementById('currentSessionLabel').textContent =
             formatSessionDate(session.date);
@@ -251,30 +276,28 @@
             const s = sessions[id];
             const isActive = id === currentSessionId;
             return `
-                <div class="session-item ${isActive ? 'active' : ''}" onclick="openSession('${id}')">
-                    <div class="session-title">
-                        <i class="bi bi-chat-dots me-1" style="font-size:0.75rem;color:#e94560"></i>
-                        ${escapeHtml(s.title)}
-                    </div>
-                    <div class="session-date">${formatSessionDate(s.date)}</div>
-                </div>`;
+            <div class="session-item ${isActive ? 'active' : ''}" onclick="openSession('${id}')">
+                <div class="session-title">
+                    <i class="bi bi-chat-dots me-1" style="font-size:0.75rem;color:#e94560"></i>
+                    ${escapeHtml(s.title)}
+                </div>
+                <div class="session-date">${formatSessionDate(s.date)}</div>
+            </div>`;
         }).join('');
     }
 
     // ── Render messages ───────────────────────────────
     function renderMessages(messages) {
         const container = document.getElementById('chatMessages');
-
         if (!messages || !messages.length) {
             container.innerHTML = `
-                <div class="empty-chat" id="emptyState">
-                    <i class="bi bi-chat-heart"></i>
-                    <p class="mb-1 fw-500">Start a conversation with Serenity</p>
-                    <p style="font-size:0.85rem">Type a message below to begin</p>
-                </div>`;
+            <div class="empty-chat" id="emptyState">
+                <i class="bi bi-chat-heart"></i>
+                <p class="mb-1 fw-500">Start a conversation with Serenity</p>
+                <p style="font-size:0.85rem">Type a message below to begin</p>
+            </div>`;
             return;
         }
-
         container.innerHTML = '';
         messages.forEach(msg => {
             appendMessageToDOM(msg.text, msg.type, msg.sentiment, msg.time, false);
@@ -296,10 +319,7 @@
         const message = document.getElementById('messageInput').value.trim();
         if (!message) return;
 
-        // Auto-create session if none active
-        if (!currentSessionId) {
-            startNewChat();
-        }
+        if (!currentSessionId) startNewChat();
 
         const sendBtn = document.getElementById('sendBtn');
         sendBtn.disabled = true;
@@ -308,7 +328,7 @@
 
         const now = new Date().toISOString();
         appendMessageToDOM(message, 'user', null, now, true);
-        saveMessage(message, 'user', null, now);
+        sessions[currentSessionId].messages.push({ text: message, type: 'user', sentiment: null, time: now });
         showTyping();
 
         try {
@@ -332,43 +352,29 @@
             const data = await response.json();
             const botTime = new Date().toISOString();
             appendMessageToDOM(data.message, 'bot', data.sentiment, botTime, true);
-            saveMessage(data.message, 'bot', data.sentiment, botTime);
+            sessions[currentSessionId].messages.push({ text: data.message, type: 'bot', sentiment: data.sentiment, time: botTime });
 
             if (data.isCrisis && data.emergencyMessage) {
                 appendCrisisAlert(data.emergencyMessage);
             }
 
-            // Update session title from first user message
-            if (sessions[currentSessionId] &&
-                sessions[currentSessionId].title === 'New conversation') {
-                sessions[currentSessionId].title =
-                    message.substring(0, 40) + (message.length > 40 ? '...' : '');
-                saveSessionsToStorage();
+            if (sessions[currentSessionId].title === 'New conversation') {
+                sessions[currentSessionId].title = message.substring(0, 40) + (message.length > 40 ? '...' : '');
                 renderSessionsList();
             }
 
         } catch (err) {
             hideTyping();
-            const errTime = new Date().toISOString();
-            appendMessageToDOM('I seem to be having trouble connecting. Please try again.', 'bot', null, errTime, true);
+            appendMessageToDOM('I seem to be having trouble connecting. Please try again.', 'bot', null, new Date().toISOString(), true);
         } finally {
             sendBtn.disabled = false;
             document.getElementById('messageInput').focus();
         }
     }
 
-    // ── Save message to session ───────────────────────
-    function saveMessage(text, type, sentiment, time) {
-        if (!currentSessionId || !sessions[currentSessionId]) return;
-        sessions[currentSessionId].messages.push({ text, type, sentiment, time });
-        saveSessionsToStorage();
-    }
-
     // ── DOM helpers ───────────────────────────────────
     function appendMessageToDOM(text, type, sentiment, timeStr, scroll) {
         const container = document.getElementById('chatMessages');
-
-        // Remove empty state if present
         const emptyState = document.getElementById('emptyState');
         if (emptyState) emptyState.remove();
 
@@ -382,9 +388,9 @@
         const div = document.createElement('div');
         div.className = `message ${type}`;
         div.innerHTML = `
-            <div class="message-bubble">${escapeHtml(text)}</div>
-            ${sentimentHtml}
-            <div class="message-time">${timeFormatted}</div>`;
+        <div class="message-bubble">${escapeHtml(text)}</div>
+        ${sentimentHtml}
+        <div class="message-time">${timeFormatted}</div>`;
         container.appendChild(div);
         if (scroll) container.scrollTop = container.scrollHeight;
     }
@@ -429,7 +435,6 @@
         return div.innerHTML;
     }
 
-    // ── Auto-resize textarea ──────────────────────────
     const input = document.getElementById('messageInput');
     input.addEventListener('input', function() {
         this.style.height = 'auto';
