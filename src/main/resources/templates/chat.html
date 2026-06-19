@@ -411,7 +411,7 @@
         const div = document.createElement('div');
         div.className = `message ${type}`;
         div.innerHTML = `
-        <div class="message-bubble">${escapeHtml(text)}</div>
+        <div class="message-bubble">${escapeHtml(text).replace(/\n/g, '<br>')}</div>
         ${sentimentHtml}
         <div class="message-time">${timeFormatted}</div>`;
         container.appendChild(div);
