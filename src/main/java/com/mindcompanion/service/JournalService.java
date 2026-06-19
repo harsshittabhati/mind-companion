@@ -26,6 +26,7 @@ public class JournalService {
     private final JournalEntryRepository journalEntryRepository;
     private final UserRepository userRepository;
     private final EncryptionUtil encryptionUtil;
+    private final GamificationService gamificationService;
     private final Random random = new Random();
 
     @Transactional
@@ -51,6 +52,9 @@ public class JournalService {
                 .build();
 
         JournalEntry saved = journalEntryRepository.save(entry);
+        int wordCount = request.getContent().trim().isEmpty() ? 0
+                : request.getContent().trim().split("\\s+").length;
+        gamificationService.awardXp(user, "JOURNAL_ENTRY", null, wordCount);
         log.debug("Saved journal entry for user: {}", username);
 
         updateStreak(user);

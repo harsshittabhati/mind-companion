@@ -35,6 +35,7 @@ public class ChatService {
     private final ObjectMapper objectMapper;
     private final EmergencyAlertService emergencyAlertService;
     private final EmailService emailService;
+    private final GamificationService gamificationService;
 
     @Value("${openai.api.key}")
     private String openAiApiKey;
@@ -103,6 +104,9 @@ public class ChatService {
         if (!confidential) {
             chatMessageRepository.save(userChatMessage);
         }
+
+        // Award XP for message
+        gamificationService.awardXp(user, "MESSAGE", sentiment, 0);
 
         // 3. Handle crisis — save alert + send email
         if (isCrisis) {

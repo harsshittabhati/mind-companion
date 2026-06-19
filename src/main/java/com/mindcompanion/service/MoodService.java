@@ -23,6 +23,7 @@ public class MoodService {
 
     private final MoodEntryRepository moodEntryRepository;
     private final UserRepository userRepository;
+    private final GamificationService gamificationService;
 
     // ─── Save today's mood check-in ─────────────────
     @Transactional
@@ -63,7 +64,9 @@ public class MoodService {
                 .build();
 
         MoodEntry saved = moodEntryRepository.save(entry);
+        gamificationService.awardXp(user, "MOOD_CHECKIN");
         log.debug("Saved mood entry for user: {}", username);
+
 
         return buildResponse(saved, user.getId());
     }

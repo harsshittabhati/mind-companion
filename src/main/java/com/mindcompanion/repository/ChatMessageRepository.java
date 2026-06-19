@@ -25,6 +25,10 @@ public interface ChatMessageRepository
     // Get last N messages for a user (for AI context window)
     List<ChatMessage> findTop20ByUserIdOrderByCreatedAtDesc(Long userId);
 
+    // Check if user sent any message today (for first-message-of-day XP bonus)
+    boolean existsByUserIdAndSenderTypeAndCreatedAtAfter(
+            Long userId, String senderType, LocalDateTime after);
+
     // Count crisis messages for a user
     Long countByUserIdAndIsCrisisTrue(Long userId);
 

@@ -4,6 +4,7 @@ import com.mindcompanion.model.Badge;
 import com.mindcompanion.model.MoodEntry;
 import com.mindcompanion.model.User;
 import com.mindcompanion.model.UserBadge;
+import com.mindcompanion.model.enums.SentimentType;
 import com.mindcompanion.repository.BadgeRepository;
 import com.mindcompanion.repository.ChatMessageRepository;
 import com.mindcompanion.repository.MoodEntryRepository;
@@ -30,25 +31,63 @@ public class GamificationService {
     private final ChatMessageRepository chatMessageRepository;
     private final MoodEntryRepository moodEntryRepository;
 
-    // XP values for different actions
-    private static final int XP_PER_MESSAGE = 5;
-    private static final int XP_PER_MOOD_CHECKIN = 10;
-    private static final int XP_PER_JOURNAL_ENTRY = 15;
-    private static final int XP_PER_STREAK_DAY = 20;
+    // XP values
+    private static final int XP_PER_MESSAGE           = 2;
+    private static final int XP_POSITIVE_SENTIMENT    = 3;
+    private static final int XP_FIRST_MESSAGE_OF_DAY  = 5;
+    private static final int XP_PER_MOOD_CHECKIN      = 10;
+    private static final int XP_SHORT_JOURNAL         = 15;
+    private static final int XP_LONG_JOURNAL          = 20;
+    private static final int XP_PER_STREAK_DAY        = 20;
+    private static final int XP_WEEKLY_MOOD_STREAK    = 50;
+    private static final int XP_CRISIS_RECOVERY       = 10;
 
-    /**
-     * Awards XP to a user for a specific action.
-     * Saves updated XP and checks for new badges.
-     */
     @Transactional
     public void awardXp(User user, String action) {
-        int xpToAdd = switch (action) {
-            case "MESSAGE" -> XP_PER_MESSAGE;
-            case "MOOD_CHECKIN" -> XP_PER_MOOD_CHECKIN;
-            case "JOURNAL_ENTRY" -> XP_PER_JOURNAL_ENTRY;
-            case "STREAK_DAY" -> XP_PER_STREAK_DAY;
-            default -> 0;
-        };
+        awardXp(user, action, null, 0);
+    }
+
+    @Transactional
+    public void awardXp(User user, String action, SentimentType sentiment, int wordCount) {
+        int xpToAdd = 0;
+
+        switch (action) {
+            case "MESSAGE" -> {
+                xpToAdd += XP_PER_MESSAGE;
+
+                // Bonus: positive sentiment
+                if (sentiment == SentimentType.POSITIVE) {
+                    xpToAdd += XP_POSITIVE_SENTIMENT;
+                    log.debug("Positive sentiment bonus +{} XP", XP_POSITIVE_SENTIMENT);
+                }
+
+                // Bonus: crisis recovery (positive after recent crisis)
+                if (sentiment == SentimentType.POSITIVE && hadRecentCrisis(user)) {
+                    xpToAdd += XP_CRISIS_RECOVERY;
+                    log.debug("Crisis recovery bonus +{} XP", XP_CRISIS_RECOVERY);
+                }
+
+                // Bonus: first message of the day
+                if (isFirstMessageToday(user)) {
+                    xpToAdd += XP_FIRST_MESSAGE_OF_DAY;
+                    log.debug("First message of day bonus +{} XP", XP_FIRST_MESSAGE_OF_DAY);
+                }
+            }
+            case "MOOD_CHECKIN" -> {
+                xpToAdd += XP_PER_MOOD_CHECKIN;
+
+                // Bonus: weekly mood streak (7 consecutive days)
+                if (hasWeeklyMoodStreak(user)) {
+                    xpToAdd += XP_WEEKLY_MOOD_STREAK;
+                    log.debug("Weekly mood streak bonus +{} XP", XP_WEEKLY_MOOD_STREAK);
+                }
+            }
+            case "JOURNAL_ENTRY" -> {
+                // Long entry (150+ words) gets more XP
+                xpToAdd += (wordCount >= 150) ? XP_LONG_JOURNAL : XP_SHORT_JOURNAL;
+            }
+            case "STREAK_DAY" -> xpToAdd += XP_PER_STREAK_DAY;
+        }
 
         if (xpToAdd == 0) return;
 
@@ -58,14 +97,41 @@ public class GamificationService {
         log.debug("Awarded {} XP to user '{}' for action '{}'. Total: {}",
                 xpToAdd, user.getUsername(), action, user.getXpPoints());
 
-        // Check if any new badges should be awarded
         checkAndAwardBadges(user);
     }
 
-    /**
-     * Returns the current XP level and progress for a user.
-     * Level formula: level = XP / 100 (every 100 XP = 1 level)
-     */
+    private boolean isFirstMessageToday(User user) {
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        return !chatMessageRepository.existsByUserIdAndSenderTypeAndCreatedAtAfter(
+                user.getId(), "USER", startOfDay);
+    }
+
+    private boolean hadRecentCrisis(User user) {
+        LocalDateTime since = LocalDateTime.now().minusHours(24);
+        return chatMessageRepository
+                .findTop20ByUserIdOrderByCreatedAtDesc(user.getId())
+                .stream()
+                .filter(m -> m.getCreatedAt() != null && m.getCreatedAt().isAfter(since))
+                .anyMatch(m -> m.getIsCrisis() != null && m.getIsCrisis());
+    }
+
+    private boolean hasWeeklyMoodStreak(User user) {
+        LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
+        List<MoodEntry> recent = moodEntryRepository
+                .findByUserIdAndCreatedAtAfterOrderByCreatedAtAsc(
+                        user.getId(), sevenDaysAgo);
+
+        Set<LocalDate> activeDates = recent.stream()
+                .map(e -> e.getCreatedAt().toLocalDate())
+                .collect(Collectors.toSet());
+
+        // Check if all 7 days are covered
+        for (int i = 0; i < 7; i++) {
+            if (!activeDates.contains(LocalDate.now().minusDays(i))) return false;
+        }
+        return true;
+    }
+
     public Map<String, Object> getXpStatus(User user) {
         int xp = user.getXpPoints() != null ? user.getXpPoints() : 0;
         int level = xp / 100;
@@ -81,42 +147,29 @@ public class GamificationService {
         }};
     }
 
-    /**
-     * Calculates the user's current streak (consecutive days with activity).
-     */
     public int calculateStreak(User user) {
         List<MoodEntry> entries = moodEntryRepository
                 .findByUserIdAndCreatedAtAfterOrderByCreatedAtAsc(
-                        user.getId(),
-                        LocalDateTime.now().minusDays(365));
+                        user.getId(), LocalDateTime.now().minusDays(365));
 
         if (entries.isEmpty()) return 0;
 
-        // Get distinct dates with activity
         Set<LocalDate> activeDates = entries.stream()
                 .map(e -> e.getCreatedAt().toLocalDate())
                 .collect(Collectors.toSet());
 
-        // Count consecutive days ending today
         int streak = 0;
         LocalDate date = LocalDate.now();
-
         while (activeDates.contains(date)) {
             streak++;
             date = date.minusDays(1);
         }
-
         return streak;
     }
 
-    /**
-     * Returns all badges earned by the user.
-     */
     public List<Map<String, Object>> getUserBadges(User user) {
-        List<UserBadge> userBadges = userBadgeRepository
-                .findByUserOrderByEarnedAtDesc(user);
-
-        return userBadges.stream()
+        return userBadgeRepository.findByUserOrderByEarnedAtDesc(user)
+                .stream()
                 .map(ub -> {
                     Map<String, Object> badgeMap = new LinkedHashMap<>();
                     badgeMap.put("id", ub.getBadge().getId());
@@ -129,9 +182,6 @@ public class GamificationService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Returns the full gamification profile for a user.
-     */
     public Map<String, Object> getGamificationProfile(User user) {
         Map<String, Object> profile = new LinkedHashMap<>();
         profile.put("xpStatus", getXpStatus(user));
@@ -141,11 +191,6 @@ public class GamificationService {
         return profile;
     }
 
-    // ─── Private helpers ─────────────────────────────
-
-    /**
-     * Checks XP milestones and awards badges automatically.
-     */
     @Transactional
     private void checkAndAwardBadges(User user) {
         int xp = user.getXpPoints() != null ? user.getXpPoints() : 0;
@@ -155,34 +200,27 @@ public class GamificationService {
                 .map(ub -> ub.getBadge().getName())
                 .collect(Collectors.toList());
 
-        // XP milestone badges
-        awardBadgeIfEligible(user, "First Steps", xp >= 10, alreadyEarned);
-        awardBadgeIfEligible(user, "Getting Started", xp >= 50, alreadyEarned);
-        awardBadgeIfEligible(user, "Committed", xp >= 100, alreadyEarned);
-        awardBadgeIfEligible(user, "Dedicated", xp >= 250, alreadyEarned);
-        awardBadgeIfEligible(user, "Champion", xp >= 500, alreadyEarned);
+        awardBadgeIfEligible(user, "First Steps",     xp >= 10,  alreadyEarned);
+        awardBadgeIfEligible(user, "Getting Started", xp >= 50,  alreadyEarned);
+        awardBadgeIfEligible(user, "Committed",       xp >= 100, alreadyEarned);
+        awardBadgeIfEligible(user, "Dedicated",       xp >= 250, alreadyEarned);
+        awardBadgeIfEligible(user, "Champion",        xp >= 500, alreadyEarned);
 
-        // Streak badges
         int streak = calculateStreak(user);
-        awardBadgeIfEligible(user, "3-Day Streak", streak >= 3, alreadyEarned);
-        awardBadgeIfEligible(user, "Week Warrior", streak >= 7, alreadyEarned);
-        awardBadgeIfEligible(user, "Monthly Master", streak >= 30, alreadyEarned);
+        awardBadgeIfEligible(user, "3-Day Streak",    streak >= 3,  alreadyEarned);
+        awardBadgeIfEligible(user, "Week Warrior",    streak >= 7,  alreadyEarned);
+        awardBadgeIfEligible(user, "Monthly Master",  streak >= 30, alreadyEarned);
     }
 
     private void awardBadgeIfEligible(User user, String badgeName,
-                                      boolean condition,
-                                      List<String> alreadyEarned) {
+                                      boolean condition, List<String> alreadyEarned) {
         if (!condition || alreadyEarned.contains(badgeName)) return;
-
         badgeRepository.findByName(badgeName).ifPresent(badge -> {
             UserBadge userBadge = UserBadge.builder()
-                    .user(user)
-                    .badge(badge)
-                    .earnedAt(LocalDateTime.now())
-                    .build();
+                    .user(user).badge(badge)
+                    .earnedAt(LocalDateTime.now()).build();
             userBadgeRepository.save(userBadge);
-            log.info("🏆 Badge '{}' awarded to user '{}'",
-                    badgeName, user.getUsername());
+            log.info("🏆 Badge '{}' awarded to '{}'", badgeName, user.getUsername());
         });
     }
 
