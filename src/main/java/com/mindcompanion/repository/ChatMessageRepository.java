@@ -25,6 +25,17 @@ public interface ChatMessageRepository
     // Get last N messages for a user (for AI context window)
     List<ChatMessage> findTop20ByUserIdOrderByCreatedAtDesc(Long userId);
 
+    // Get recent messages for current session + non-crisis messages from last 24h
+    @Query("SELECT m FROM ChatMessage m WHERE m.user.id = :userId " +
+            "AND (m.sessionId = :sessionId OR " +
+            "(m.isCrisis = false AND m.createdAt > :since)) " +
+            "ORDER BY m.createdAt DESC")
+    org.springframework.data.domain.Page<ChatMessage> findContextMessages(
+            @Param("userId") Long userId,
+            @Param("sessionId") String sessionId,
+            @Param("since") LocalDateTime since,
+            org.springframework.data.domain.Pageable pageable);
+
     // Check if user sent any message today (for first-message-of-day XP bonus)
     boolean existsByUserIdAndSenderTypeAndCreatedAtAfter(
             Long userId, String senderType, LocalDateTime after);

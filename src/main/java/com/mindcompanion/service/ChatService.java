@@ -139,7 +139,7 @@ public class ChatService {
         }
 
         // 4. Get AI response from Groq
-        String aiReply = getAiResponse(userMessage, user);
+        String aiReply = getAiResponse(userMessage, user, sessionId);
 
         // 5. Save AI response (encrypted) — skip if confidential mode is on
         ChatMessage botChatMessage = ChatMessage.builder()
@@ -239,12 +239,18 @@ public class ChatService {
         return CRISIS_KEYWORDS.stream().anyMatch(lower::contains);
     }
 
-    private String getAiResponse(String userMessage, User user) {
+    private String getAiResponse(String userMessage, User user, String sessionId) {
         try {
             log.debug("Calling Groq API with model: {}", openAiModel);
 
+            String sid = (sessionId != null) ? sessionId : "";
             List<ChatMessage> history = chatMessageRepository
-                    .findTop20ByUserIdOrderByCreatedAtDesc(user.getId());
+                    .findContextMessages(
+                            user.getId(),
+                            sid,
+                            LocalDateTime.now().minusHours(24),
+                            org.springframework.data.domain.PageRequest.of(0, 20))
+                    .getContent();
 
             List<Object> messages = new ArrayList<>();
 
