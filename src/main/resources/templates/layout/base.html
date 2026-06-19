@@ -234,6 +234,8 @@
                 const av = document.getElementById('navAvatar');
                 if (el) el.textContent = name;
                 if (av) av.textContent = initial;
+                if (document.getElementById('navAvatar'))
+                    document.getElementById('navAvatar').textContent = name.charAt(0).toUpperCase();
             })
             .catch(() => {});
     })();
