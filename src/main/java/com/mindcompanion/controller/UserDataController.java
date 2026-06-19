@@ -93,7 +93,20 @@ public class UserDataController {
         log.warn("Account fully deleted for user {}", userId);
         return ResponseEntity.ok(new MessageResponse("Your account and all associated data have been permanently deleted."));
     }
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> getMe(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+        User user = userRepository.findById(userDetails.getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return ResponseEntity.ok(new MeResponse(
+                user.getUsername(),
+                user.getFullName() != null && !user.getFullName().isBlank()
+                        ? user.getFullName() : user.getUsername(),
+                user.getEmail()
+        ));
+    }
 
+    record MeResponse(String username, String fullName, String email) {}
     record PrivacySettingsResponse(Integer retentionDays, boolean confidentialMode) {}
 
     static class PrivacySettingsRequest {

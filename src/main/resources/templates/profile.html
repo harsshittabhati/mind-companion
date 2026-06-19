@@ -248,9 +248,24 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     const token = localStorage.getItem('token');
-    const username = localStorage.getItem('username') || 'User';
-    document.getElementById('usernameDisplay').textContent = username;
     if (!token) window.location.href = '/login';
+    fetch('/api/user/me', { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+            const name = (data && data.fullName) ? data.fullName : (localStorage.getItem('username') || 'User');
+            const uname = (data && data.username) ? data.username : (localStorage.getItem('username') || '');
+            const email = (data && data.email) ? data.email : '';
+            document.getElementById('usernameDisplay').textContent = name;
+            document.getElementById('avatarInitial').textContent = name.charAt(0).toUpperCase();
+            document.getElementById('profileName').textContent = name;
+            document.getElementById('profileUsername').textContent = '@' + uname;
+            document.getElementById('settingUsername').value = uname;
+            document.getElementById('settingFullName').value = name !== uname ? name : '';
+            if (email) document.getElementById('settingEmail').value = email;
+        }).catch(() => {
+        const u = localStorage.getItem('username') || 'User';
+        document.getElementById('usernameDisplay').textContent = u;
+    });
 
     async function loadProfile() {
         try {
@@ -262,11 +277,7 @@
             const dash = await dashRes.json();
 
             // Avatar & name
-            const initial = username.charAt(0).toUpperCase();
-            document.getElementById('avatarInitial').textContent = initial;
-            document.getElementById('profileName').textContent = username;
-            document.getElementById('profileUsername').textContent = '@' + username;
-            document.getElementById('settingUsername').value = username;
+            // Avatar & name handled by /api/user/me fetch above
 
             // XP stats
             const xp = gam.xpStatus || {};

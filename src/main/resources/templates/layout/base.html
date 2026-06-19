@@ -166,14 +166,35 @@
 <div th:class="${#authorization.expression('isAuthenticated()')} ? 'main-content' : ''">
 
     <!-- Top navbar for authenticated users -->
+    <!-- Top navbar for authenticated users -->
     <div class="top-navbar d-flex justify-content-between align-items-center"
          sec:authorize="isAuthenticated()">
-        <h5 class="mb-0 fw-600" th:text="${pageTitle} ?: 'Mind Companion'">Mind Companion</h5>
+        <h5 class="mb-0" style="font-weight:600;" th:text="${pageTitle} ?: 'Mind Companion'">Mind Companion</h5>
         <div class="d-flex align-items-center gap-3">
-            <span class="text-muted small">
-                <i class="bi bi-person-circle me-1"></i>
-                <span sec:authentication="name">User</span>
-            </span>
+            <!-- Avatar + name dropdown -->
+            <div class="dropdown">
+                <a href="#" class="d-flex align-items-center gap-2 text-decoration-none text-dark dropdown-toggle"
+                   data-bs-toggle="dropdown" aria-expanded="false">
+                    <div id="navAvatar" style="width:34px;height:34px;border-radius:50%;
+                                background:linear-gradient(135deg,#e94560,#c62a47);
+                                color:#fff;font-weight:700;font-size:0.85rem;
+                                display:flex;align-items:center;justify-content:center;">U</div>
+                    <span id="navFullName" class="small" style="font-weight:500;">User</span>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" style="min-width:160px;">
+                    <li>
+                        <a class="dropdown-item small" th:href="@{/profile}">
+                            <i class="bi bi-person me-2"></i>Profile
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"/></li>
+                    <li>
+                        <a class="dropdown-item small text-danger" th:href="@{/logout}">
+                            <i class="bi bi-box-arrow-left me-2"></i>Logout
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
 
@@ -197,6 +218,25 @@
         });
     }
 </script>
-
+<script>
+    (function() {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        fetch('/api/user/me', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (!data) return;
+                const name = data.fullName || data.username || 'User';
+                const initial = name.charAt(0).toUpperCase();
+                const el = document.getElementById('navFullName');
+                const av = document.getElementById('navAvatar');
+                if (el) el.textContent = name;
+                if (av) av.textContent = initial;
+            })
+            .catch(() => {});
+    })();
+</script>
 </body>
 </html>

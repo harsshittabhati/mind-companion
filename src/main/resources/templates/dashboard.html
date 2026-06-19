@@ -203,14 +203,24 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
     const token = localStorage.getItem('token');
-    const username = localStorage.getItem('username') || 'User';
-    document.getElementById('usernameDisplay').textContent = username;
     if (!token) window.location.href = '/login';
 
-    // Greeting
+    // Greeting + name
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-    document.getElementById('greetingText').textContent = `${greeting}, ${username}! Here's your wellness overview.`;
+
+    fetch('/api/user/me', { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+            const name = (data && data.fullName) ? data.fullName : (localStorage.getItem('username') || 'User');
+            document.getElementById('usernameDisplay').textContent = name;
+            document.getElementById('greetingText').textContent = `${greeting}, ${name}! Here's your wellness overview.`;
+        })
+        .catch(() => {
+            const username = localStorage.getItem('username') || 'User';
+            document.getElementById('usernameDisplay').textContent = username;
+            document.getElementById('greetingText').textContent = `${greeting}, ${username}! Here's your wellness overview.`;
+        });
 
     // PDF download with auth
     document.getElementById('pdfBtn').addEventListener('click', async function(e) {

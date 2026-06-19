@@ -1,5 +1,8 @@
 package com.mindcompanion.controller;
 
+import com.mindcompanion.repository.UserRepository;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -7,6 +10,26 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 public class FrontendController {
+
+    private final UserRepository userRepository;
+
+    public FrontendController(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    private void addUserInfo(Model model, UserDetails userDetails) {
+        System.out.println("DEBUG userDetails: " + userDetails);
+        if (userDetails == null) return;
+        userRepository.findByUsername(userDetails.getUsername()).ifPresent(user -> {
+            String fullName = user.getFullName();
+            model.addAttribute("fullName", (fullName != null && !fullName.isBlank())
+                    ? fullName : user.getUsername());
+            model.addAttribute("avatarInitial",
+                    (fullName != null && !fullName.isBlank())
+                            ? String.valueOf(fullName.charAt(0)).toUpperCase()
+                            : String.valueOf(user.getUsername().charAt(0)).toUpperCase());
+        });
+    }
 
     @GetMapping("/")
     public String index() {
@@ -29,37 +52,42 @@ public class FrontendController {
     }
 
     @GetMapping("/dashboard")
-    public String dashboard(Model model) {
+    public String dashboard(Model model, @AuthenticationPrincipal UserDetails userDetails) {
         model.addAttribute("pageTitle", "Dashboard");
         model.addAttribute("activePage", "dashboard");
+        addUserInfo(model, userDetails);
         return "dashboard";
     }
 
     @GetMapping("/chat")
-    public String chat(Model model) {
+    public String chat(Model model, @AuthenticationPrincipal UserDetails userDetails) {
         model.addAttribute("pageTitle", "Chat with Serenity");
         model.addAttribute("activePage", "chat");
+        addUserInfo(model, userDetails);
         return "chat";
     }
 
     @GetMapping("/mood")
-    public String mood(Model model) {
+    public String mood(Model model, @AuthenticationPrincipal UserDetails userDetails) {
         model.addAttribute("pageTitle", "Mood Check-in");
         model.addAttribute("activePage", "mood");
+        addUserInfo(model, userDetails);
         return "mood";
     }
 
     @GetMapping("/journal")
-    public String journal(Model model) {
+    public String journal(Model model, @AuthenticationPrincipal UserDetails userDetails) {
         model.addAttribute("pageTitle", "My Journal");
         model.addAttribute("activePage", "journal");
+        addUserInfo(model, userDetails);
         return "journal";
     }
 
     @GetMapping("/profile")
-    public String profile(Model model) {
+    public String profile(Model model, @AuthenticationPrincipal UserDetails userDetails) {
         model.addAttribute("pageTitle", "Profile & Settings");
         model.addAttribute("activePage", "profile");
+        addUserInfo(model, userDetails);
         return "profile";
     }
 }
