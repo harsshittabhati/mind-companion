@@ -105,6 +105,83 @@ public class UserDataController {
                 user.getEmail()
         ));
     }
+    @PutMapping("/profile")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> updateProfile(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestBody UpdateProfileRequest request) {
+
+        User user = userRepository.findById(userDetails.getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+            user.setFullName(request.getFullName().trim());
+        }
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            // Check email not taken by another user
+            userRepository.findByEmail(request.getEmail().trim()).ifPresent(existing -> {
+                if (!existing.getId().equals(user.getId())) {
+                    throw new RuntimeException("Email already in use");
+                }
+            });
+            user.setEmail(request.getEmail().trim());
+        }
+
+        userRepository.save(user);
+        log.info("Profile updated for user {}", userDetails.getId());
+        return ResponseEntity.ok(new MessageResponse("Profile updated successfully!"));
+    }
+
+    @GetMapping("/emergency-contact")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> getEmergencyContact(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+
+        User user = userRepository.findById(userDetails.getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return ResponseEntity.ok(new EmergencyContactResponse(
+                user.getEmergencyContactName(),
+                user.getEmergencyContactEmail(),
+                user.getEmergencyContactPhone()
+        ));
+    }
+
+    @PutMapping("/emergency-contact")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> updateEmergencyContact(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestBody EmergencyContactRequest request) {
+
+        User user = userRepository.findById(userDetails.getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setEmergencyContactName(request.getName());
+        user.setEmergencyContactEmail(request.getEmail());
+        user.setEmergencyContactPhone(request.getPhone());
+
+        userRepository.save(user);
+        log.info("Emergency contact updated for user {}", userDetails.getId());
+        return ResponseEntity.ok(new MessageResponse("Emergency contact saved!"));
+    }
+
+    record EmergencyContactResponse(String name, String email, String phone) {}
+
+    static class UpdateProfileRequest {
+        private String fullName;
+        private String email;
+        public String getFullName() { return fullName; }
+        public String getEmail() { return email; }
+    }
+
+    static class EmergencyContactRequest {
+        private String name;
+        private String email;
+        private String phone;
+        public String getName() { return name; }
+        public String getEmail() { return email; }
+        public String getPhone() { return phone; }
+    }
 
     record MeResponse(String username, String fullName, String email) {}
     record PrivacySettingsResponse(Integer retentionDays, boolean confidentialMode) {}

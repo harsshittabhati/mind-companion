@@ -314,18 +314,93 @@
         } catch (err) {
             console.error('Error loading profile:', err);
         }
+
+        // Load emergency contact
+        try {
+            const ecRes = await fetch('/api/user/emergency-contact', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (ecRes.ok) {
+                const ec = await ecRes.json();
+                if (ec.name) document.getElementById('emergencyName').value = ec.name;
+                if (ec.email) document.getElementById('emergencyEmail').value = ec.email;
+                if (ec.phone) document.getElementById('emergencyPhone').value = ec.phone;
+            }
+        } catch (err) { console.error('Error loading emergency contact:', err); }
+
+        // Load privacy settings
+        try {
+            const privRes = await fetch('/api/user/privacy', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (privRes.ok) {
+                const priv = await privRes.json();
+                if (priv.retentionDays != null) document.getElementById('retentionDays').value = priv.retentionDays;
+                document.getElementById('confidentialMode').checked = priv.confidentialMode;
+            }
+        } catch (err) { console.error('Error loading privacy settings:', err); }
     }
 
-    function saveAccountInfo() {
-        showAlert('accountAlert', 'Profile update coming in a future release. 💙', 'info');
+    async function saveAccountInfo() {
+        const fullName = document.getElementById('settingFullName').value.trim();
+        const email = document.getElementById('settingEmail').value.trim();
+        if (!fullName && !email) { showAlert('accountAlert', 'Please fill in at least one field.', 'warning'); return; }
+        try {
+            const res = await fetch('/api/user/profile', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ fullName, email })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showAlert('accountAlert', '✅ ' + data.message, 'success');
+                // Update navbar
+                document.getElementById('usernameDisplay').textContent = fullName;
+                if (document.getElementById('navAvatar'))
+                    document.getElementById('navAvatar').textContent = fullName.charAt(0).toUpperCase();
+                document.getElementById('profileName').textContent = fullName;
+                document.getElementById('avatarInitial').textContent = fullName.charAt(0).toUpperCase();
+            } else {
+                showAlert('accountAlert', '❌ ' + (data.message || 'Failed to update.'), 'danger');
+            }
+        } catch (err) {
+            showAlert('accountAlert', '❌ Connection error.', 'danger');
+        }
     }
 
-    function saveEmergencyContact() {
-        showAlert('emergencyAlert', 'Emergency contact saved! 🛡️', 'success');
+    async function saveEmergencyContact() {
+        const name = document.getElementById('emergencyName').value.trim();
+        const email = document.getElementById('emergencyEmail').value.trim();
+        const phone = document.getElementById('emergencyPhone').value.trim();
+        try {
+            const res = await fetch('/api/user/emergency-contact', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ name, email, phone })
+            });
+            const data = await res.json();
+            if (res.ok) showAlert('emergencyAlert', '✅ ' + data.message, 'success');
+            else showAlert('emergencyAlert', '❌ ' + (data.message || 'Failed to save.'), 'danger');
+        } catch (err) {
+            showAlert('emergencyAlert', '❌ Connection error.', 'danger');
+        }
     }
 
-    function savePrivacySettings() {
-        showAlert('accountAlert', 'Privacy settings saved! 🔒', 'success');
+    async function savePrivacySettings() {
+        const retentionDays = parseInt(document.getElementById('retentionDays').value);
+        const confidentialMode = document.getElementById('confidentialMode').checked;
+        try {
+            const res = await fetch('/api/user/privacy', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ retentionDays, confidentialMode })
+            });
+            const data = await res.json();
+            if (res.ok) showAlert('accountAlert', '✅ ' + data.message, 'success');
+            else showAlert('accountAlert', '❌ Failed to save.', 'danger');
+        } catch (err) {
+            showAlert('accountAlert', '❌ Connection error.', 'danger');
+        }
     }
 
     function confirmDeleteHistory() {
