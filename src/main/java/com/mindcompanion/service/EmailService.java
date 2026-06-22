@@ -79,6 +79,29 @@ public class EmailService {
         }
     }
 
+    /**
+     * Sends an email verification link to a newly registered user.
+     */
+    public void sendVerificationEmail(String toEmail, String username, String token) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            String verifyUrl = "http://localhost:8080/api/auth/verify?token=" + token;
+
+            helper.setFrom(fromEmail);
+            helper.setTo(toEmail);
+            helper.setSubject("Verify your " + appName + " account 💙");
+            helper.setText(buildVerificationEmailBody(username, verifyUrl), true);
+
+            mailSender.send(message);
+            log.info("📧 Verification email sent to {}", toEmail);
+
+        } catch (MessagingException e) {
+            log.error("❌ Failed to send verification email to '{}': {}", toEmail, e.getMessage());
+        }
+    }
+
     // ─────────────────────────────────────────────
     // Private HTML builders
     // ─────────────────────────────────────────────
@@ -140,7 +163,43 @@ public class EmailService {
                 </html>
                 """.formatted(appName, username, triggerKeyword, triggerReason, time, appName);
     }
+    private String buildVerificationEmailBody(String username, String verifyUrl) {
+        return """
+                <html>
+                <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+                  <div style="max-width: 600px; margin: auto; background: white;
+                              border-radius: 8px; padding: 30px;
+                              border-left: 6px solid #e94560;">
 
+                    <h2 style="color: #e94560;">💙 Verify your email</h2>
+                    <p style="color: #555; font-size: 15px;">
+                      Hi <strong>%s</strong>, welcome to <strong>%s</strong>!
+                    </p>
+                    <p style="color: #555; font-size: 15px;">
+                      Please click the button below to verify your email address
+                      and activate your account.
+                    </p>
+
+                    <div style="text-align: center; margin: 30px 0;">
+                      <a href="%s"
+                         style="background: linear-gradient(135deg, #e94560, #c62a47);
+                                color: white; padding: 14px 32px; border-radius: 8px;
+                                text-decoration: none; font-weight: bold; font-size: 16px;">
+                        ✅ Verify Email
+                      </a>
+                    </div>
+
+                    <p style="color: #888; font-size: 13px;">
+                      If you didn't create an account, you can safely ignore this email.
+                    </p>
+                    <p style="font-size: 12px; color: #aaa;">
+                      This link will remain active. — %s
+                    </p>
+                  </div>
+                </body>
+                </html>
+                """.formatted(username, appName, verifyUrl, appName);
+    }
     private String buildWelcomeEmailBody(String username) {
         return """
                 <html>
