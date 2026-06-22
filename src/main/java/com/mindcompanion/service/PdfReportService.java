@@ -33,145 +33,179 @@ public class PdfReportService {
             DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a");
     private static final float MARGIN = 50f;
     private static final float PAGE_WIDTH = PDRectangle.A4.getWidth();
-    private static final float LINE_HEIGHT = 18f;
+    private static final float PAGE_HEIGHT = PDRectangle.A4.getHeight();
+    private static final float CONTENT_WIDTH = PAGE_WIDTH - 2 * MARGIN;
+    private static final float LINE_HEIGHT = 20f;
 
-    /**
-     * Generates a PDF wellness report for the given user.
-     * Returns the PDF as a byte array.
-     */
+    // Brand colors (RGB 0-1)
+    private static final float[] RED    = {0.914f, 0.271f, 0.376f};
+    private static final float[] DARK   = {0.102f, 0.102f, 0.180f};
+    private static final float[] GRAY   = {0.420f, 0.420f, 0.420f};
+    private static final float[] LIGHT  = {0.969f, 0.980f, 0.980f};
+    private static final float[] WHITE  = {1f, 1f, 1f};
+    private static final float[] GREEN  = {0.161f, 0.651f, 0.408f};
+    private static final float[] PURPLE = {0.486f, 0.227f, 0.929f};
+
     public byte[] generateWellnessReport(User user) throws IOException {
 
-        Map<String, Object> dashboard =
-                analyticsService.getFullDashboard(user);
-        Map<String, Object> gamification =
-                gamificationService.getGamificationProfile(user);
+        Map<String, Object> dashboard = analyticsService.getFullDashboard(user);
+        Map<String, Object> gamification = gamificationService.getGamificationProfile(user);
 
         try (PDDocument doc = new PDDocument()) {
             PDPage page = new PDPage(PDRectangle.A4);
             doc.addPage(page);
 
-            try (PDPageContentStream cs =
-                         new PDPageContentStream(doc, page)) {
+            try (PDPageContentStream cs = new PDPageContentStream(doc, page)) {
 
-                float y = PDRectangle.A4.getHeight() - MARGIN;
+                float y = PAGE_HEIGHT;
 
-                // ── Header ───────────────────────────────────────
-                y = drawText(cs, "Mind Companion — Wellness Report",
-                        MARGIN, y, 18, true);
-                y = drawText(cs,
-                        "Generated: " + LocalDateTime.now().format(FORMATTER),
-                        MARGIN, y - 5, 10, false);
-                y = drawText(cs, "User: " + user.getUsername(),
-                        MARGIN, y, 10, false);
-                y -= 15;
-                y = drawLine(cs, y);
-                y -= 10;
+                // ── Hero header band ─────────────────────────────
+                fillRect(cs, 0, PAGE_HEIGHT - 110, PAGE_WIDTH, 110, DARK);
+                // Accent strip
+                fillRect(cs, 0, PAGE_HEIGHT - 115, PAGE_WIDTH, 5, RED);
 
-                // ── Gamification ─────────────────────────────────
+                // Title
+                setColor(cs, WHITE);
+                drawTextRaw(cs, "Mind Companion", MARGIN, PAGE_HEIGHT - 50, 24, true);
+                drawTextRaw(cs, "Wellness Report", MARGIN, PAGE_HEIGHT - 76, 14, false);
+
+                // Generated date top right
+                String genDate = "Generated: " + LocalDateTime.now().format(FORMATTER);
+                drawTextRaw(cs, genDate, PAGE_WIDTH - MARGIN - 200, PAGE_HEIGHT - 50, 9, false);
+                String userName = "User: " + (user.getFullName() != null && !user.getFullName().isBlank()
+                        ? user.getFullName() : user.getUsername());
+                drawTextRaw(cs, userName, PAGE_WIDTH - MARGIN - 200, PAGE_HEIGHT - 64, 9, false);
+
+                y = PAGE_HEIGHT - 130;
+
+                // ── Gamification row — 3 stat boxes ─────────────
                 @SuppressWarnings("unchecked")
-                Map<String, Object> xpStatus =
-                        (Map<String, Object>) gamification.get("xpStatus");
+                Map<String, Object> xpStatus = (Map<String, Object>) gamification.get("xpStatus");
+                int streak = ((Number) gamification.get("streak")).intValue();
+                int badgeCount = ((Number) gamification.get("badgeCount")).intValue();
+                int totalXp = ((Number) xpStatus.get("totalXp")).intValue();
+                int level = ((Number) xpStatus.get("level")).intValue();
+                String levelTitle = (String) xpStatus.get("levelTitle");
 
-                y = drawText(cs, "Gamification Progress",
-                        MARGIN, y, 14, true);
-                y -= 5;
-                y = drawText(cs, "Level: " + xpStatus.get("level")
-                                + "  (" + xpStatus.get("levelTitle") + ")",
-                        MARGIN, y, 11, false);
-                y = drawText(cs, "Total XP: " + xpStatus.get("totalXp"),
-                        MARGIN, y, 11, false);
-                y = drawText(cs, "Current Streak: "
-                                + gamification.get("streak") + " days",
-                        MARGIN, y, 11, false);
-                y = drawText(cs, "Badges Earned: "
-                                + gamification.get("badgeCount"),
-                        MARGIN, y, 11, false);
-                y -= 10;
+                float boxW = (CONTENT_WIDTH - 20) / 3;
+                float boxH = 70;
+                float boxY = y - boxH;
 
-                // ── Session Stats ────────────────────────────────
+                drawStatBox(cs, MARGIN, boxY, boxW, boxH, RED,
+                        "Level " + level, levelTitle, totalXp + " XP");
+                drawStatBox(cs, MARGIN + boxW + 10, boxY, boxW, boxH, PURPLE,
+                        streak + " Days", "Current Streak", "Keep it up!");
+                drawStatBox(cs, MARGIN + 2 * (boxW + 10), boxY, boxW, boxH, GREEN,
+                        badgeCount + " Badges", "Earned", "Great work!");
+
+                y = boxY - 20;
+
+                // ── Session Statistics ────────────────────────────
                 @SuppressWarnings("unchecked")
-                Map<String, Object> stats =
-                        (Map<String, Object>) dashboard.get("sessionStats");
+                Map<String, Object> stats = (Map<String, Object>) dashboard.get("sessionStats");
 
-                y = drawLine(cs, y);
-                y -= 10;
-                y = drawText(cs, "Session Statistics",
-                        MARGIN, y, 14, true);
-                y -= 5;
-                y = drawText(cs, "Total Messages Sent: "
-                        + stats.get("totalMessages"), MARGIN, y, 11, false);
-                y = drawText(cs, "Positive Message Rate: "
-                                + stats.get("positiveRate") + "%",
-                        MARGIN, y, 11, false);
-                y = drawText(cs, "Crisis Incidents: "
-                        + stats.get("crisisCount"), MARGIN, y, 11, false);
-                y -= 10;
+                y = drawSectionHeader(cs, "Session Statistics", y);
+                y -= 8;
+
+                float col2x = MARGIN + CONTENT_WIDTH / 2;
+                drawLabelValue(cs, "Total Messages", String.valueOf(stats.get("totalMessages")), MARGIN, y);
+                drawLabelValue(cs, "Positive Rate", stats.get("positiveRate") + "%", col2x, y);
+                y -= LINE_HEIGHT;
+                drawLabelValue(cs, "Crisis Incidents", String.valueOf(stats.get("crisisCount")), MARGIN, y);
+                drawLabelValue(cs, "Avg Intensity", String.valueOf(stats.get("averageIntensity")), col2x, y);
+                y -= 20;
 
                 // ── Mood Summary ─────────────────────────────────
                 @SuppressWarnings("unchecked")
-                Map<String, Object> mood7 =
-                        (Map<String, Object>) dashboard.get("moodAverage7Days");
+                Map<String, Object> mood7 = (Map<String, Object>) dashboard.get("moodAverage7Days");
                 @SuppressWarnings("unchecked")
-                Map<String, Object> mood30 =
-                        (Map<String, Object>) dashboard.get("moodAverage30Days");
+                Map<String, Object> mood30 = (Map<String, Object>) dashboard.get("moodAverage30Days");
 
-                y = drawLine(cs, y);
-                y -= 10;
-                y = drawText(cs, "Mood Summary",
-                        MARGIN, y, 14, true);
-                y -= 5;
-                y = drawText(cs, "7-Day Average Mood: "
-                                + mood7.get("averageMood") + " / 10",
-                        MARGIN, y, 11, false);
-                y = drawText(cs, "30-Day Average Mood: "
-                                + mood30.get("averageMood") + " / 10",
-                        MARGIN, y, 11, false);
-                y = drawText(cs, "Check-ins (last 7 days): "
-                        + mood7.get("totalEntries"), MARGIN, y, 11, false);
-                y -= 10;
+                y = drawSectionHeader(cs, "Mood Summary", y);
+                y -= 8;
+
+                double avg7 = mood7.get("averageMood") != null
+                        ? ((Number) mood7.get("averageMood")).doubleValue() : 0;
+                double avg30 = mood30.get("averageMood") != null
+                        ? ((Number) mood30.get("averageMood")).doubleValue() : 0;
+
+                drawLabelValue(cs, "7-Day Average", avg7 + " / 10", MARGIN, y);
+                drawLabelValue(cs, "30-Day Average", avg30 + " / 10", col2x, y);
+                y -= LINE_HEIGHT;
+                drawLabelValue(cs, "Check-ins (7 days)", String.valueOf(mood7.get("totalEntries")), MARGIN, y);
+                y -= 14;
+
+                // Mood bars
+                y = drawMoodBars(cs, avg7, avg30, y);
+                y -= 20;
 
                 // ── Sentiment Breakdown ──────────────────────────
                 @SuppressWarnings("unchecked")
-                Map<String, Long> sentiment =
-                        (Map<String, Long>) dashboard.get("sentimentBreakdown");
+                Map<String, Long> sentiment = (Map<String, Long>) dashboard.get("sentimentBreakdown");
 
-                y = drawLine(cs, y);
-                y -= 10;
-                y = drawText(cs, "Sentiment Breakdown",
-                        MARGIN, y, 14, true);
-                y -= 5;
+                y = drawSectionHeader(cs, "Sentiment Breakdown", y);
+                y -= 8;
+
+                long total = sentiment.values().stream().mapToLong(Long::longValue).sum();
+                float[][] sentColors = {GREEN, RED, GRAY, DARK};
+                int ci = 0;
                 for (Map.Entry<String, Long> entry : sentiment.entrySet()) {
-                    y = drawText(cs, entry.getKey() + ": "
-                                    + entry.getValue() + " messages",
-                            MARGIN, y, 11, false);
+                    float pct = total > 0 ? (entry.getValue() * 100f / total) : 0;
+                    float barW = (float)(entry.getValue() * 1.0 / Math.max(total, 1)) * (CONTENT_WIDTH - 120);
+                    float[] color = sentColors[ci % sentColors.length];
+
+                    setColor(cs, DARK);
+                    drawTextRaw(cs, entry.getKey(), MARGIN, y, 10, false);
+                    fillRect(cs, MARGIN + 90, y - 3, Math.max(barW, 2), 12, color);
+                    setColor(cs, DARK);
+                    drawTextRaw(cs, entry.getValue() + " (" + Math.round(pct) + "%)",
+                            MARGIN + 100 + barW, y, 9, false);
+                    y -= LINE_HEIGHT;
+                    ci++;
                 }
                 y -= 10;
 
-                // ── Recent Mood Entries ──────────────────────────
+                // ── Recent Mood Check-ins ────────────────────────
                 List<MoodEntry> recentMoods = moodEntryRepository
                         .findByUserIdAndCreatedAtAfterOrderByCreatedAtAsc(
-                                user.getId(),
-                                LocalDateTime.now().minusDays(7));
+                                user.getId(), LocalDateTime.now().minusDays(7));
 
                 if (!recentMoods.isEmpty()) {
-                    y = drawLine(cs, y);
-                    y -= 10;
-                    y = drawText(cs, "Recent Mood Check-ins (Last 7 Days)",
-                            MARGIN, y, 14, true);
-                    y -= 5;
+                    y = drawSectionHeader(cs, "Recent Mood Check-ins (Last 7 Days)", y);
+                    y -= 8;
+
+                    // Table header
+                    fillRect(cs, MARGIN, y - 4, CONTENT_WIDTH, 18, LIGHT);
+                    setColor(cs, DARK);
+                    drawTextRaw(cs, "Date", MARGIN + 4, y, 9, true);
+                    drawTextRaw(cs, "Score", MARGIN + 120, y, 9, true);
+                    drawTextRaw(cs, "Level", MARGIN + 180, y, 9, true);
+                    drawTextRaw(cs, "Notes", MARGIN + 260, y, 9, true);
+                    y -= LINE_HEIGHT;
+
                     for (MoodEntry entry : recentMoods) {
-                        if (y < 80) break; // stop if near page bottom
-                        String line = entry.getEntryDate()
-                                + "  —  Score: " + entry.getMoodScore()
-                                + "/10  (" + entry.getMoodLevel() + ")";
-                        y = drawText(cs, line, MARGIN, y, 10, false);
+                        if (y < 80) break;
+                        setColor(cs, DARK);
+                        drawTextRaw(cs, entry.getEntryDate().toString(), MARGIN + 4, y, 9, false);
+                        drawTextRaw(cs, entry.getMoodScore() + "/10", MARGIN + 120, y, 9, false);
+                        drawTextRaw(cs, entry.getMoodLevel().toString().replace("_", " "),
+                                MARGIN + 180, y, 9, false);
+                        if (entry.getNotes() != null && !entry.getNotes().isBlank()) {
+                            String note = entry.getNotes().length() > 40
+                                    ? entry.getNotes().substring(0, 40) + "..." : entry.getNotes();
+                            drawTextRaw(cs, note, MARGIN + 260, y, 9, false);
+                        }
+                        // Alternating row background
+                        y -= LINE_HEIGHT;
                     }
                 }
 
                 // ── Footer ───────────────────────────────────────
-                drawText(cs,
-                        "This report is confidential and generated by Mind Companion.",
-                        MARGIN, 40f, 9, false);
+                fillRect(cs, 0, 0, PAGE_WIDTH, 35, DARK);
+                setColor(cs, WHITE);
+                drawTextRaw(cs,
+                        "This report is confidential and generated by Mind Companion  •  " + LocalDateTime.now().format(FORMATTER),
+                        MARGIN, 14, 8, false);
             }
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -180,27 +214,87 @@ public class PdfReportService {
         }
     }
 
-    // ─── Drawing helpers ─────────────────────────────
+    // ─── Section header ──────────────────────────────
+    private float drawSectionHeader(PDPageContentStream cs, String title, float y) throws IOException {
+        fillRect(cs, MARGIN, y - 5, CONTENT_WIDTH, 22, LIGHT);
+        // Left accent bar
+        fillRect(cs, MARGIN, y - 5, 4, 22, RED);
+        setColor(cs, DARK);
+        drawTextRaw(cs, title, MARGIN + 12, y + 8, 12, true);
+        return y - 18;
+    }
 
-    private float drawText(PDPageContentStream cs, String text,
-                           float x, float y,
-                           int fontSize, boolean bold) throws IOException {
+    // ─── Stat box ────────────────────────────────────
+    private void drawStatBox(PDPageContentStream cs, float x, float y,
+                             float w, float h, float[] color,
+                             String value, String label, String sub) throws IOException {
+        fillRect(cs, x, y, w, h, color);
+        setColor(cs, WHITE);
+        drawTextRaw(cs, value, x + 10, y + h - 22, 16, true);
+        drawTextRaw(cs, label, x + 10, y + h - 40, 10, false);
+        drawTextRaw(cs, sub, x + 10, y + h - 56, 9, false);
+    }
+
+    // ─── Label + value pair ───────────────────────────
+    private void drawLabelValue(PDPageContentStream cs, String label,
+                                String value, float x, float y) throws IOException {
+        setColor(cs, GRAY);
+        drawTextRaw(cs, label + ":", x, y, 9, false);
+        setColor(cs, DARK);
+        drawTextRaw(cs, value, x + 110, y, 10, true);
+    }
+
+    // ─── Mood progress bars ───────────────────────────
+    private float drawMoodBars(PDPageContentStream cs, double avg7, double avg30, float y) throws IOException {
+        float maxBarW = CONTENT_WIDTH - 80;
+
+        setColor(cs, GRAY);
+        drawTextRaw(cs, "7-day", MARGIN, y, 9, false);
+        float bar7 = (float)(avg7 / 10.0) * maxBarW;
+        fillRect(cs, MARGIN + 50, y - 3, maxBarW, 12, LIGHT);
+        fillRect(cs, MARGIN + 50, y - 3, Math.max(bar7, 2), 12, RED);
+        setColor(cs, DARK);
+        drawTextRaw(cs, avg7 + "", MARGIN + 55 + maxBarW, y, 9, true);
+        y -= 20;
+
+        setColor(cs, GRAY);
+        drawTextRaw(cs, "30-day", MARGIN, y, 9, false);
+        float bar30 = (float)(avg30 / 10.0) * maxBarW;
+        fillRect(cs, MARGIN + 50, y - 3, maxBarW, 12, LIGHT);
+        fillRect(cs, MARGIN + 50, y - 3, Math.max(bar30, 2), 12, PURPLE);
+        setColor(cs, DARK);
+        drawTextRaw(cs, avg30 + "", MARGIN + 55 + maxBarW, y, 9, true);
+        y -= 20;
+
+        return y;
+    }
+
+    // ─── Low-level drawing helpers ────────────────────
+    private void fillRect(PDPageContentStream cs, float x, float y,
+                          float w, float h, float[] rgb) throws IOException {
+        cs.setNonStrokingColor(new java.awt.Color(rgb[0], rgb[1], rgb[2]));
+        cs.addRect(x, y, w, h);
+        cs.fill();
+    }
+
+    private void setColor(PDPageContentStream cs, float[] rgb) throws IOException {
+        cs.setNonStrokingColor(new java.awt.Color(rgb[0], rgb[1], rgb[2]));
+    }
+
+    private void drawTextRaw(PDPageContentStream cs, String text,
+                             float x, float y, int fontSize,
+                             boolean bold) throws IOException {
         PDType1Font font = bold
                 ? new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD)
                 : new PDType1Font(Standard14Fonts.FontName.HELVETICA);
         cs.beginText();
         cs.setFont(font, fontSize);
         cs.newLineAtOffset(x, y);
-        cs.showText(text != null ? text : "");
+        cs.showText(text != null ? sanitize(text) : "");
         cs.endText();
-        return y - LINE_HEIGHT;
     }
 
-    private float drawLine(PDPageContentStream cs,
-                           float y) throws IOException {
-        cs.moveTo(MARGIN, y);
-        cs.lineTo(PAGE_WIDTH - MARGIN, y);
-        cs.stroke();
-        return y;
+    private String sanitize(String text) {
+        return text.replaceAll("[^\\x20-\\x7E]", "");
     }
 }
