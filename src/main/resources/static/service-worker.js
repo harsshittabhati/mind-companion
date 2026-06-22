@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mind-companion-v1';
+const CACHE_NAME = 'mind-companion-v2';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_URLS = [
