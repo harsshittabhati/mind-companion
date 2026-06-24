@@ -61,7 +61,7 @@ public class SecurityConfig {
                         // PWA files
                         .requestMatchers("/manifest.json", "/service-worker.js", "/offline.html").permitAll()
                         // Public pages
-                        .requestMatchers("/", "/login", "/register").permitAll()
+                        .requestMatchers("/", "/login", "/register", "/forgot-password", "/reset-password").permitAll()
                         // Thymeleaf pages — served by FrontendController, JWT checked client-side
                         .requestMatchers("/dashboard", "/chat", "/mood", "/journal", "/profile").permitAll()
                         // WebSocket

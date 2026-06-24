@@ -101,6 +101,21 @@ public class EmailService {
             log.error("❌ Failed to send verification email to '{}': {}", toEmail, e.getMessage());
         }
     }
+    public void sendPasswordResetEmail(String toEmail, String username, String token) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            String resetUrl = "http://localhost:8080/reset-password?token=" + token;
+            helper.setFrom(fromEmail);
+            helper.setTo(toEmail);
+            helper.setSubject("Reset your " + appName + " password");
+            helper.setText(buildPasswordResetEmailBody(username, resetUrl), true);
+            mailSender.send(message);
+            log.info("📧 Password reset email sent to {}", toEmail);
+        } catch (MessagingException e) {
+            log.error("❌ Failed to send reset email to '{}': {}", toEmail, e.getMessage());
+        }
+    }
 
     // ─────────────────────────────────────────────
     // Private HTML builders
@@ -200,6 +215,38 @@ public class EmailService {
                 </html>
                 """.formatted(username, appName, verifyUrl, appName);
     }
+
+    private String buildPasswordResetEmailBody(String username, String resetUrl) {
+        return """
+                <html>
+                <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+                  <div style="max-width: 600px; margin: auto; background: white;
+                              border-radius: 8px; padding: 30px;
+                              border-left: 6px solid #e94560;">
+                    <h2 style="color: #e94560;">🔐 Reset your password</h2>
+                    <p style="color: #555; font-size: 15px;">Hi <strong>%s</strong>,</p>
+                    <p style="color: #555; font-size: 15px;">
+                      We received a request to reset your password. Click the button below.
+                      This link expires in <strong>1 hour</strong>.
+                    </p>
+                    <div style="text-align: center; margin: 30px 0;">
+                      <a href="%s"
+                         style="background: linear-gradient(135deg, #e94560, #c62a47);
+                                color: white; padding: 14px 32px; border-radius: 8px;
+                                text-decoration: none; font-weight: bold; font-size: 16px;">
+                        🔑 Reset Password
+                      </a>
+                    </div>
+                    <p style="color: #888; font-size: 13px;">
+                      If you didn't request this, ignore this email. Your password won't change.
+                    </p>
+                    <p style="font-size: 12px; color: #aaa;">— %s</p>
+                  </div>
+                </body>
+                </html>
+                """.formatted(username, resetUrl, appName);
+    }
+
     private String buildWelcomeEmailBody(String username) {
         return """
                 <html>

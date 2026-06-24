@@ -138,4 +138,49 @@ public class AuthController {
                     .body(new MessageResponse("Error: Invalid username or password."));
         }
     }
+    // ─── FORGOT PASSWORD ─────────────────────────────
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody java.util.Map<String, String> body) {
+        String email = body.get("email");
+        return userRepository.findByEmail(email)
+                .map(user -> {
+                    String token = UUID.randomUUID().toString();
+                    user.setResetToken(token);
+                    user.setResetTokenExpiry(java.time.LocalDateTime.now().plusHours(1));
+                    userRepository.save(user);
+                    try {
+                        emailService.sendPasswordResetEmail(email, user.getUsername(), token);
+                    } catch (Exception e) {
+                        log.error("Failed to send reset email: {}", e.getMessage());
+                    }
+                    return ResponseEntity.ok(new MessageResponse(
+                            "Password reset link sent to your email."));
+                })
+                .orElse(ResponseEntity.ok(new MessageResponse(
+                        "If that email exists, a reset link has been sent.")));
+    }
+
+    // ─── RESET PASSWORD ──────────────────────────────
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody java.util.Map<String, String> body) {
+        String token = body.get("token");
+        String newPassword = body.get("password");
+
+        return userRepository.findByResetToken(token)
+                .map(user -> {
+                    if (user.getResetTokenExpiry() == null ||
+                            user.getResetTokenExpiry().isBefore(java.time.LocalDateTime.now())) {
+                        return ResponseEntity.badRequest()
+                                .body(new MessageResponse("Reset link has expired. Please request a new one."));
+                    }
+                    user.setPassword(passwordEncoder.encode(newPassword));
+                    user.setResetToken(null);
+                    user.setResetTokenExpiry(null);
+                    userRepository.save(user);
+                    log.info("Password reset for user '{}'", user.getUsername());
+                    return ResponseEntity.ok(new MessageResponse("Password reset successfully! You can now log in."));
+                })
+                .orElse(ResponseEntity.badRequest()
+                        .body(new MessageResponse("Invalid or expired reset link.")));
+    }
 }

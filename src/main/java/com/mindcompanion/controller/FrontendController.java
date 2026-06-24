@@ -90,4 +90,15 @@ public class FrontendController {
         addUserInfo(model, userDetails);
         return "profile";
     }
+
+    @GetMapping("/forgot-password")
+    public String forgotPassword() {
+        return "auth/forgot-password";
+    }
+
+    @GetMapping("/reset-password")
+    public String resetPassword(@RequestParam(required = false) String token, Model model) {
+        model.addAttribute("token", token);
+        return "auth/reset-password";
+    }
 }

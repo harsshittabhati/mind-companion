@@ -93,8 +93,11 @@
             </div>
         </div>
         <div class="mb-4">
-            <label class="form-label fw-500" style="font-size:0.9rem">Password</label>
-            <div class="input-group">
+            <div class="d-flex justify-content-between align-items-center">
+                <label class="form-label fw-500 mb-0" style="font-size:0.9rem">Password</label>
+                <a href="/forgot-password" class="text-decoration-none" style="font-size:0.8rem;color:#e94560;">Forgot password?</a>
+            </div>
+            <div class="input-group mt-1">
                 <span class="input-group-text"><i class="bi bi-lock"></i></span>
                 <input type="password" class="form-control" id="password"
                        placeholder="Enter your password" required/>
@@ -133,7 +136,7 @@
                 localStorage.setItem('username', data.username);
                 window.location.href = '/dashboard';
             } else {
-                showError('Invalid username or password. Please try again.');
+                showError(data.message || 'Invalid username or password. Please try again.');
             }
         } catch (err) {
             showError('Connection error. Please try again.');
