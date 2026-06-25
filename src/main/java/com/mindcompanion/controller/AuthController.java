@@ -101,18 +101,30 @@ public class AuthController {
     public ResponseEntity<?> authenticateUser(
             @Valid @RequestBody LoginRequest request) {
 
+        // Resolve username from email if needed
+        String loginUsername = request.getUsername();
+        if (loginUsername.contains("@")) {
+            loginUsername = userRepository.findByEmail(loginUsername)
+                    .map(User::getUsername)
+                    .orElse(loginUsername);
+        }
+        final String resolvedUsername = loginUsername;
+
         // Check email verified before authenticating
-        userRepository.findByUsername(request.getUsername()).ifPresent(user -> {
-            // null means registered before verification was added — allow login
-            if (user.getEmailVerified() != null && Boolean.FALSE.equals(user.getEmailVerified())) {
-                throw new RuntimeException("EMAIL_NOT_VERIFIED");
+        var existingUser = userRepository.findByUsername(resolvedUsername);
+        if (existingUser.isPresent()) {
+            User u = existingUser.get();
+            if (u.getEmailVerified() != null && Boolean.FALSE.equals(u.getEmailVerified())) {
+                return ResponseEntity.badRequest()
+                        .body(new MessageResponse(
+                                "Please verify your email before logging in. Check your inbox."));
             }
-        });
+        }
 
         try {
             Authentication authentication = authenticationManager
                     .authenticate(new UsernamePasswordAuthenticationToken(
-                            request.getUsername(), request.getPassword()));
+                            resolvedUsername, request.getPassword()));
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
             String jwt = jwtUtils.generateJwtToken(authentication);
@@ -128,12 +140,7 @@ public class AuthController {
                     userDetails.getUsername(),
                     userDetails.getEmail(), role));
 
-        } catch (RuntimeException e) {
-            if ("EMAIL_NOT_VERIFIED".equals(e.getMessage())) {
-                return ResponseEntity.badRequest()
-                        .body(new MessageResponse(
-                                "Please verify your email before logging in. Check your inbox."));
-            }
+        } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(new MessageResponse("Error: Invalid username or password."));
         }

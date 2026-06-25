@@ -224,7 +224,10 @@ public class EmailService {
                               border-radius: 8px; padding: 30px;
                               border-left: 6px solid #e94560;">
                     <h2 style="color: #e94560;">🔐 Reset your password</h2>
-                    <p style="color: #555; font-size: 15px;">Hi <strong>%s</strong>,</p>
+                    <p style="color: #555; font-size: 15px;">Hi there,</p>
+                                        <p style="color: #555; font-size: 15px;">
+                                          As a reminder, your username is: <strong>%s</strong>
+                                        </p>
                     <p style="color: #555; font-size: 15px;">
                       We received a request to reset your password. Click the button below.
                       This link expires in <strong>1 hour</strong>.

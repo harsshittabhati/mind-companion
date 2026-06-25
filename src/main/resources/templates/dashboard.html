@@ -304,7 +304,21 @@
             // Mood timeline chart
             const timeline = dash.moodTimeline || [];
             if (moodChartInstance) moodChartInstance.destroy();
-            moodChartInstance = new Chart(document.getElementById('moodChart'), {
+
+            if (timeline.length === 0) {
+                document.getElementById('moodChart').style.display = 'none';
+                document.getElementById('moodChart').insertAdjacentHTML('afterend', `
+                    <div id="moodEmptyState" class="text-center text-muted py-4">
+                        <i class="bi bi-emoji-smile" style="font-size:2rem;color:#e9ecef"></i>
+                        <p class="mt-2 mb-0" style="font-size:0.85rem">
+                            No mood data yet. Do your first check-in to see your timeline.
+                        </p>
+                    </div>`);
+            } else {
+                document.getElementById('moodChart').style.display = 'block';
+                const emptyState = document.getElementById('moodEmptyState');
+                if (emptyState) emptyState.remove();
+                moodChartInstance = new Chart(document.getElementById('moodChart'), {
                 type: 'line',
                 data: {
                     labels: timeline.map(d => d.date),
@@ -328,7 +342,8 @@
                         x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 11 } } }
                     }
                 }
-            });
+                });
+            } // end else timeline
 
             // Sentiment chart
             const sentiment = dash.sentimentBreakdown || {};
@@ -354,14 +369,25 @@
                 }
             });
 
-            document.getElementById('sentimentLegend').innerHTML = labels.map((l, i) => `
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <div class="d-flex align-items-center gap-2">
-                        <div style="width:10px;height:10px;border-radius:50%;background:${sentColors[l] || '#adb5bd'}"></div>
-                        <span style="font-size:0.8rem">${l}</span>
-                    </div>
-                    <span style="font-size:0.8rem;font-weight:600">${values[i]}</span>
-                </div>`).join('');
+            if (labels.length === 0) {
+                document.getElementById('sentimentChart').style.display = 'none';
+                document.getElementById('sentimentLegend').innerHTML = `
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-chat-heart" style="font-size:2rem;color:#e9ecef"></i>
+                        <p class="mt-2 mb-0" style="font-size:0.85rem">
+                            Start chatting with Serenity to see your sentiment breakdown.
+                        </p>
+                    </div>`;
+            } else {
+                document.getElementById('sentimentLegend').innerHTML = labels.map((l, i) => `
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div class="d-flex align-items-center gap-2">
+                            <div style="width:10px;height:10px;border-radius:50%;background:${sentColors[l] || '#adb5bd'}"></div>
+                            <span style="font-size:0.8rem">${l}</span>
+                        </div>
+                        <span style="font-size:0.8rem;font-weight:600">${values[i]}</span>
+                    </div>`).join('');
+            }
 
         } catch (err) {
             console.error('Dashboard load error:', err);
