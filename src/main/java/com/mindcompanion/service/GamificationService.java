@@ -175,7 +175,11 @@ public class GamificationService {
                     badgeMap.put("id", ub.getBadge().getId());
                     badgeMap.put("name", ub.getBadge().getName());
                     badgeMap.put("description", ub.getBadge().getDescription());
-                    badgeMap.put("icon", ub.getBadge().getIcon());
+                    String icon = ub.getBadge().getIcon();
+                    if (icon == null || icon.equals("?")) {
+                        icon = BADGE_ICONS.getOrDefault(ub.getBadge().getName(), "🏅");
+                    }
+                    badgeMap.put("icon", icon);
                     badgeMap.put("earnedAt", ub.getEarnedAt().toString());
                     return badgeMap;
                 })
@@ -212,15 +216,31 @@ public class GamificationService {
         awardBadgeIfEligible(user, "Monthly Master",  streak >= 30, alreadyEarned);
     }
 
+    private static final Map<String, String> BADGE_ICONS = Map.of(
+            "First Steps",     "🌱",
+            "Getting Started", "🚀",
+            "Committed",       "💪",
+            "Dedicated",       "🏆",
+            "Champion",        "👑",
+            "3-Day Streak",    "🔥",
+            "Week Warrior",    "⚡",
+            "Monthly Master",  "🌟"
+    );
+
     private void awardBadgeIfEligible(User user, String badgeName,
                                       boolean condition, List<String> alreadyEarned) {
         if (!condition || alreadyEarned.contains(badgeName)) return;
         badgeRepository.findByName(badgeName).ifPresent(badge -> {
+            // Set icon if missing
+            if (badge.getIcon() == null || badge.getIcon().equals("?")) {
+                badge.setIcon(BADGE_ICONS.getOrDefault(badgeName, "🏅"));
+                badgeRepository.save(badge);
+            }
             UserBadge userBadge = UserBadge.builder()
                     .user(user).badge(badge)
                     .earnedAt(LocalDateTime.now()).build();
             userBadgeRepository.save(userBadge);
-            log.info("🏆 Badge '{}' awarded to '{}'", badgeName, user.getUsername());
+            log.info("Badge '{}' awarded to '{}'", badgeName, user.getUsername());
         });
     }
 
