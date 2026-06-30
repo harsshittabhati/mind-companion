@@ -454,10 +454,14 @@
     }
 
     // ── Send message ──────────────────────────────────
+    let isSending = false;
+
     async function sendMessage() {
+        if (isSending) return;
         const message = document.getElementById('messageInput').value.trim();
         if (!message) return;
 
+        isSending = true;
         if (!currentSessionId) startNewChat();
 
         const sendBtn = document.getElementById('sendBtn');
@@ -503,6 +507,7 @@
             hideTyping();
             appendMessageToDOM('I seem to be having trouble connecting. Please try again.', 'bot', null, new Date().toISOString(), true);
         } finally {
+            isSending = false;
             sendBtn.disabled = false;
             document.getElementById('messageInput').focus();
         }
