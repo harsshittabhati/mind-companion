@@ -40,4 +40,7 @@ public class ChatResponse {
 
     // True if the AI reply is a fallback due to a connection/API failure
     private Boolean aiError;
+
+    // Smart 2-4 word title for this chat session (only set on first message of a session)
+    private String sessionTitle;
 }

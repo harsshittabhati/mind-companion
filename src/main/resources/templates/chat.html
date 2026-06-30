@@ -512,7 +512,9 @@
             }
 
             if (sessions[currentSessionId].title === 'New conversation') {
-                sessions[currentSessionId].title = message.substring(0, 40) + (message.length > 40 ? '...' : '');
+                sessions[currentSessionId].title = data.sessionTitle
+                    ? data.sessionTitle
+                    : message.substring(0, 40) + (message.length > 40 ? '...' : '');
                 renderSessionsList();
             }
 
@@ -535,13 +537,9 @@
         const timeFormatted = timeStr
             ? new Date(timeStr).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
 
-        const sentimentHtml = sentiment && type === 'user'
-            ? '<div><span class="sentiment-badge sentiment-' + sentiment + '">' + sentiment + '</span></div>' : '';
-
         const div = document.createElement('div');
         div.className = 'message ' + type;
         div.innerHTML = '<div class="message-bubble">' + escapeHtml(text).replace(/\n/g, '<br>') + '</div>'
-            + sentimentHtml
             + '<div class="message-time">' + timeFormatted + '</div>';
         container.appendChild(div);
         if (scroll) container.scrollTop = container.scrollHeight;

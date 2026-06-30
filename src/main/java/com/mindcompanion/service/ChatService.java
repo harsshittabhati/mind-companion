@@ -126,6 +126,9 @@ public class ChatService {
                 .user(user)
                 .build();
 
+        boolean isFirstMessageOfSession = chatMessageRepository
+                .findBySessionIdOrderByCreatedAtAsc(sessionId).isEmpty();
+
         if (!confidential) {
             chatMessageRepository.save(userChatMessage);
         }
@@ -166,6 +169,7 @@ public class ChatService {
                 .sessionId(sessionId)
                 .createdAt(LocalDateTime.now())
                 .aiError(aiFailed)
+                .sessionTitle(isFirstMessageOfSession ? generateSessionTitle(userMessage) : null)
                 .build();
 
         // 7. Add emergency message if crisis detected
@@ -241,6 +245,55 @@ public class ChatService {
     private boolean detectCrisis(String message) {
         String lower = message.toLowerCase();
         return CRISIS_KEYWORDS.stream().anyMatch(lower::contains);
+    }
+
+    private String generateSessionTitle(String firstMessage) {
+        try {
+            List<Object> messages = new ArrayList<>();
+            messages.add(new java.util.HashMap<>() {{
+                put("role", "system");
+                put("content", "You generate short chat titles. Given a user's first message to a " +
+                        "mental wellness companion, respond with ONLY a 2-4 word title summarizing the " +
+                        "topic or intent (e.g. 'Greeting', 'Work Stress', 'Sleep Trouble', 'Feeling Anxious'). " +
+                        "No punctuation, no quotes, no explanation — just the title.");
+            }});
+            messages.add(new java.util.HashMap<>() {{
+                put("role", "user");
+                put("content", firstMessage);
+            }});
+
+            String requestBody = objectMapper.writeValueAsString(
+                    new java.util.HashMap<>() {{
+                        put("model", openAiModel);
+                        put("messages", messages);
+                        put("max_tokens", 12);
+                        put("temperature", 0.3);
+                    }}
+            );
+
+            OkHttpClient client = new OkHttpClient.Builder()
+                    .connectTimeout(10, TimeUnit.SECONDS)
+                    .readTimeout(10, TimeUnit.SECONDS)
+                    .build();
+
+            Request httpRequest = new Request.Builder()
+                    .url("https://api.groq.com/openai/v1/chat/completions")
+                    .header("Authorization", "Bearer " + openAiApiKey)
+                    .header("Content-Type", "application/json")
+                    .post(RequestBody.create(requestBody, MediaType.parse("application/json")))
+                    .build();
+
+            try (Response httpResponse = client.newCall(httpRequest).execute()) {
+                if (httpResponse.isSuccessful() && httpResponse.body() != null) {
+                    JsonNode jsonNode = objectMapper.readTree(httpResponse.body().string());
+                    String title = jsonNode.path("choices").path(0).path("message").path("content").asText("").trim();
+                    if (!title.isEmpty()) return title;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to generate session title: {}", e.getMessage());
+        }
+        return null;
     }
 
     private String getAiResponse(String userMessage, User user, String sessionId) {
