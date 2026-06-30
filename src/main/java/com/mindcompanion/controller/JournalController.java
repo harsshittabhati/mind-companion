@@ -65,4 +65,31 @@ public class JournalController {
                 .getTodayPrompt(principal.getName());
         return ResponseEntity.ok(prompt);
     }
+    // ─── Update journal entry ────────────────────────
+    @PutMapping("/entry/{id}")
+    public ResponseEntity<JournalResponse> updateJournalEntry(
+            @PathVariable Long id,
+            @RequestBody JournalRequest request,
+            Principal principal) {
+        return ResponseEntity.ok(
+                journalService.updateJournalEntry(id, request, principal.getName()));
+    }
+
+    // ─── Delete journal entry ────────────────────────
+    @DeleteMapping("/entry/{id}")
+    public ResponseEntity<?> deleteJournalEntry(
+            @PathVariable Long id,
+            Principal principal) {
+        journalService.deleteJournalEntry(id, principal.getName());
+        return ResponseEntity.ok(new com.mindcompanion.dto.response.MessageResponse("Entry deleted."));
+    }
+
+    // ─── Toggle star journal entry ───────────────────
+    @PutMapping("/entry/{id}/star")
+    public ResponseEntity<JournalResponse> toggleStar(
+            @PathVariable Long id,
+            Principal principal) {
+        return ResponseEntity.ok(
+                journalService.toggleStarJournalEntry(id, principal.getName()));
+    }
 }

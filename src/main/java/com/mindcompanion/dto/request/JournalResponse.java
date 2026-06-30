@@ -25,6 +25,8 @@ public class JournalResponse {
     private LocalDate entryDate;
     private LocalDateTime createdAt;
 
+    private Boolean starred;
+
     // Streak info
     private Long totalEntries;
     private Boolean alreadyJournaledToday;

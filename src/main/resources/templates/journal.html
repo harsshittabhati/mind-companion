@@ -263,6 +263,8 @@
         }
     }
 
+    let activeMenuEntryId = null;
+
     async function loadHistory() {
         try {
             const response = await fetch('/api/journal/history', {
@@ -275,15 +277,110 @@
                 return;
             }
             container.innerHTML = data.slice(0, 10).map(entry => `
-                <div class="journal-entry-card">
+                <div class="journal-entry-card" id="entry-${entry.id}">
                     <div class="d-flex justify-content-between align-items-start">
-                        <div class="fw-bold" style="font-size:0.9rem">${escapeHtml(entry.title || 'Untitled Entry')}</div>
-                        <div class="journal-entry-date">${formatDate(entry.createdAt)}</div>
+                        <div class="fw-bold" style="font-size:0.9rem">
+                            ${entry.starred ? '⭐ ' : ''}${escapeHtml(entry.title || 'Untitled Entry')}
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="journal-entry-date">${formatDate(entry.createdAt)}</div>
+                            <i class="bi bi-three-dots"
+                               onclick="showEntryMenu(event, ${entry.id})"
+                               style="cursor:pointer;color:#adb5bd;font-size:0.85rem;padding:2px 4px;"></i>
+                        </div>
                     </div>
                     ${entry.sentiment ? `<span class="sentiment-pill sentiment-${entry.sentiment} mt-1">${entry.sentiment}</span>` : ''}
                     <div class="journal-entry-content">${escapeHtml(truncate(entry.content, 120))}</div>
                 </div>`).join('');
         } catch (err) { console.error('Error loading journal:', err); }
+    }
+
+    function showEntryMenu(event, entryId) {
+        event.stopPropagation();
+        activeMenuEntryId = entryId;
+        const menu = document.getElementById('entryContextMenu');
+        menu.style.display = 'block';
+        let x = event.clientX, y = event.clientY;
+        if (x + 170 > window.innerWidth) x = window.innerWidth - 175;
+        if (y + 120 > window.innerHeight) y = window.innerHeight - 125;
+        menu.style.left = x + 'px';
+        menu.style.top = y + 'px';
+    }
+
+    function hideEntryMenu() {
+        document.getElementById('entryContextMenu').style.display = 'none';
+        activeMenuEntryId = null;
+    }
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#entryContextMenu')) hideEntryMenu();
+    });
+
+    async function starEntry() {
+        const id = activeMenuEntryId;
+        hideEntryMenu();
+        if (!id) return;
+        try {
+            await fetch('/api/journal/entry/' + id + '/star', {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            loadHistory();
+        } catch (err) { console.error(err); }
+    }
+
+    function editEntry() {
+        const id = activeMenuEntryId;
+        hideEntryMenu();
+        if (!id) return;
+        const card = document.getElementById('entry-' + id);
+        const titleEl = card.querySelector('.fw-bold');
+        const contentEl = card.querySelector('.journal-entry-content');
+        const currentTitle = titleEl.textContent.replace('⭐ ', '').trim();
+        const currentContent = contentEl.textContent.replace('...', '').trim();
+
+        card.innerHTML = `
+            <div class="mb-2">
+                <input type="text" id="edit-title-${id}" class="form-control form-control-sm"
+                    value="${escapeHtml(currentTitle)}" placeholder="Entry title"/>
+            </div>
+            <div class="mb-2">
+                <textarea id="edit-content-${id}" class="form-control form-control-sm" rows="4"
+                    placeholder="Entry content...">${escapeHtml(currentContent)}</textarea>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-primary" style="background:#e94560;border:none;"
+                    onclick="saveEditEntry(${id})">Save</button>
+                <button class="btn btn-sm btn-secondary" onclick="loadHistory()">Cancel</button>
+            </div>`;
+    }
+
+    async function saveEditEntry(id) {
+        const title = document.getElementById('edit-title-' + id).value.trim();
+        const content = document.getElementById('edit-content-' + id).value.trim();
+        if (!content) return;
+        try {
+            await fetch('/api/journal/entry/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ title, content })
+            });
+            loadHistory();
+        } catch (err) { console.error(err); }
+    }
+
+    async function deleteEntry() {
+        const id = activeMenuEntryId;
+        hideEntryMenu();
+        if (!id) return;
+        if (!confirm('Delete this journal entry? This cannot be undone.')) return;
+        try {
+            await fetch('/api/journal/entry/' + id, {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            loadHistory();
+        } catch (err) { console.error(err); }
     }
 
     function truncate(text, len) { return text && text.length > len ? text.substring(0, len) + '...' : text; }
@@ -304,7 +401,35 @@
 
     loadHistory();
 </script>
-
+<!-- Journal entry context menu -->
+<div id="entryContextMenu" style="
+    display:none; position:fixed; z-index:9999;
+    background:#1e1e2e; border-radius:12px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.35);
+    padding:6px; min-width:150px; font-size:0.85rem;">
+    <div onclick="starEntry()" style="
+        display:flex;align-items:center;gap:10px;padding:9px 14px;
+        color:#fff;cursor:pointer;border-radius:8px;"
+         onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+         onmouseout="this.style.background='transparent'">
+        <i class="bi bi-star" style="color:#f5c518"></i> Star
+    </div>
+    <div onclick="editEntry()" style="
+        display:flex;align-items:center;gap:10px;padding:9px 14px;
+        color:#fff;cursor:pointer;border-radius:8px;"
+         onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+         onmouseout="this.style.background='transparent'">
+        <i class="bi bi-pencil" style="color:#adb5bd"></i> Edit
+    </div>
+    <hr style="border-color:rgba(255,255,255,0.1);margin:4px 0;"/>
+    <div onclick="deleteEntry()" style="
+        display:flex;align-items:center;gap:10px;padding:9px 14px;
+        color:#ff6b6b;cursor:pointer;border-radius:8px;"
+         onmouseover="this.style.background='rgba(255,107,107,0.1)'"
+         onmouseout="this.style.background='transparent'">
+        <i class="bi bi-trash"></i> Delete
+    </div>
+</div>
 <!-- Service Worker -->
 <script>
     if ('serviceWorker' in navigator) {

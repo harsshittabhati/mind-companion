@@ -219,13 +219,17 @@
                         <div class="text-muted" style="font-size:0.8rem">Messages are not saved to disk when enabled</div>
                     </div>
                     <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="confidentialMode" style="width:3rem;height:1.5rem;cursor:pointer"/>
+                        <input class="form-check-input" type="checkbox" id="confidentialMode" style="width:3rem;height:1.5rem;cursor:pointer" onchange="toggleConfidentialWarning(this); savePrivacySettings();"/>
                     </div>
+                </div>
+                <div id="confidentialWarning" class="alert alert-warning" style="font-size:0.8rem;border-radius:10px;padding:10px 14px;">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Your chat won't be saved while this is on — messages will disappear if you leave or refresh the page. Turn this off if you want to keep your conversation history.
                 </div>
                 <div class="d-flex align-items-center gap-3">
                     <div class="flex-grow-1">
                         <label class="form-label">Auto-delete messages after</label>
-                        <select class="form-select" id="retentionDays" style="border-radius:10px;border:1.5px solid #e9ecef;">
+                        <select class="form-select" id="retentionDays" style="border-radius:10px;border:1.5px solid #e9ecef;" onchange="savePrivacySettings()">
                             <option value="30">30 days</option>
                             <option value="90">90 days</option>
                             <option value="180">180 days</option>
@@ -234,11 +238,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="mt-3">
-                    <button class="btn btn-save" onclick="savePrivacySettings()">
-                        <i class="bi bi-lock me-2"></i>Save Privacy Settings
-                    </button>
-                </div>
+                <div id="privacySaveStatus" class="mt-2" style="font-size:0.8rem;"></div>
             </div>
 
             <!-- Danger zone -->
@@ -337,8 +337,13 @@
                 const priv = await privRes.json();
                 if (priv.retentionDays != null) document.getElementById('retentionDays').value = priv.retentionDays;
                 document.getElementById('confidentialMode').checked = priv.confidentialMode;
+                toggleConfidentialWarning(document.getElementById('confidentialMode'));
             }
         } catch (err) { console.error('Error loading privacy settings:', err); }
+    }
+
+    function toggleConfidentialWarning(checkbox) {
+        document.getElementById('confidentialWarning').classList.toggle('d-none', checkbox.checked);
     }
 
     async function saveAccountInfo() {
@@ -389,17 +394,20 @@
     async function savePrivacySettings() {
         const retentionDays = parseInt(document.getElementById('retentionDays').value);
         const confidentialMode = document.getElementById('confidentialMode').checked;
+        const statusEl = document.getElementById('privacySaveStatus');
         try {
             const res = await fetch('/api/user/privacy', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
                 body: JSON.stringify({ retentionDays, confidentialMode })
             });
-            const data = await res.json();
-            if (res.ok) showAlert('accountAlert', '✅ ' + data.message, 'success');
-            else showAlert('accountAlert', '❌ Failed to save.', 'danger');
+            if (!res.ok) {
+                statusEl.innerHTML = '<span class="text-danger">❌ Failed to save</span>';
+                setTimeout(() => { statusEl.innerHTML = ''; }, 2500);
+            }
         } catch (err) {
-            showAlert('accountAlert', '❌ Connection error.', 'danger');
+            statusEl.innerHTML = '<span class="text-danger">❌ Connection error</span>';
+            setTimeout(() => { statusEl.innerHTML = ''; }, 2500);
         }
     }
 

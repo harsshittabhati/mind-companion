@@ -50,6 +50,10 @@ public class JournalEntry {
     @Column(name = "entry_date", nullable = false)
     private LocalDate entryDate;
 
+    @Column(name = "starred")
+    @Builder.Default
+    private Boolean starred = false;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

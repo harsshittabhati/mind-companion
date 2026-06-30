@@ -39,9 +39,23 @@ public class JournalService {
         String aiSummary = generateSummary(request.getContent(), sentiment);
         String tags = extractTags(request.getContent());
 
+        // Auto-generate title if not provided
+        String title = request.getTitle();
+        if (title == null || title.isBlank()) {
+            String[] words = request.getContent().trim().split("\\s+");
+            int wordCount = Math.min(words.length, 6);
+            StringBuilder autoTitle = new StringBuilder();
+            for (int i = 0; i < wordCount; i++) {
+                if (i > 0) autoTitle.append(" ");
+                autoTitle.append(words[i]);
+            }
+            if (words.length > 6) autoTitle.append("...");
+            title = autoTitle.toString();
+        }
+
         // Always create a new entry — allow multiple per day
         JournalEntry entry = JournalEntry.builder()
-                .title(request.getTitle())
+                .title(title)
                 .content(encryptionUtil.encrypt(request.getContent()))
                 .prompt(request.getPrompt())
                 .sentiment(sentiment)
@@ -185,8 +199,62 @@ public class JournalService {
                 .tags(entry.getTags())
                 .entryDate(entry.getEntryDate())
                 .createdAt(entry.getCreatedAt())
+                .starred(entry.getStarred())
                 .totalEntries(totalEntries)
                 .alreadyJournaledToday(journaledToday)
                 .build();
+
+    }
+    @Transactional
+    public JournalResponse updateJournalEntry(Long entryId, JournalRequest request, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        JournalEntry entry = journalEntryRepository.findById(entryId)
+                .orElseThrow(() -> new RuntimeException("Entry not found"));
+
+        if (!entry.getUser().getId().equals(user.getId()))
+            throw new RuntimeException("Unauthorized");
+
+        if (request.getTitle() != null && !request.getTitle().isBlank())
+            entry.setTitle(request.getTitle());
+
+        if (request.getContent() != null && !request.getContent().isBlank()) {
+            entry.setContent(encryptionUtil.encrypt(request.getContent()));
+            entry.setSentiment(analyzeSentiment(request.getContent()));
+        }
+
+        journalEntryRepository.save(entry);
+        return buildResponse(entry, user.getId(), true);
+    }
+
+    @Transactional
+    public void deleteJournalEntry(Long entryId, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        JournalEntry entry = journalEntryRepository.findById(entryId)
+                .orElseThrow(() -> new RuntimeException("Entry not found"));
+
+        if (!entry.getUser().getId().equals(user.getId()))
+            throw new RuntimeException("Unauthorized");
+
+        journalEntryRepository.delete(entry);
+    }
+
+    @Transactional
+    public JournalResponse toggleStarJournalEntry(Long entryId, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        JournalEntry entry = journalEntryRepository.findById(entryId)
+                .orElseThrow(() -> new RuntimeException("Entry not found"));
+
+        if (!entry.getUser().getId().equals(user.getId()))
+            throw new RuntimeException("Unauthorized");
+
+        entry.setStarred(!Boolean.TRUE.equals(entry.getStarred()));
+        journalEntryRepository.save(entry);
+        return buildResponse(entry, user.getId(), true);
     }
 }
