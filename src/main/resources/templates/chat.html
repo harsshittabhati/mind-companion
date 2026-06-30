@@ -160,7 +160,15 @@
                         <span class="status-dot"></span>AI Mental Health Companion
                     </div>
                 </div>
-                <div class="ms-auto text-muted" style="font-size:0.8rem" id="currentSessionLabel"></div>
+                <div class="ms-auto text-end">
+                    <div class="text-muted" style="font-size:0.8rem" id="currentSessionLabel"></div>
+                    <div id="connectionErrorBanner" class="d-none" style="
+                        margin-top:4px; font-size:0.75rem; color:#856404;
+                        background:#fff3cd; border:1px solid #ffc107; border-radius:8px;
+                        padding:4px 10px; display:inline-flex; align-items:center; gap:6px;">
+                        <i class="bi bi-wifi-off"></i> Connection issue — message not sent
+                    </div>
+                </div>
             </div>
 
             <div class="chat-messages" id="chatMessages">
@@ -490,9 +498,14 @@
             }
 
             const data = await response.json();
-            const botTime = new Date().toISOString();
-            appendMessageToDOM(data.message, 'bot', data.sentiment, botTime, true);
-            sessions[currentSessionId].messages.push({ text: data.message, type: 'bot', sentiment: data.sentiment, time: botTime });
+
+            if (data.aiError) {
+                showConnectionError();
+            } else {
+                const botTime = new Date().toISOString();
+                appendMessageToDOM(data.message, 'bot', data.sentiment, botTime, true);
+                sessions[currentSessionId].messages.push({ text: data.message, type: 'bot', sentiment: data.sentiment, time: botTime });
+            }
 
             if (data.isCrisis && data.emergencyMessage) {
                 appendCrisisAlert(data.emergencyMessage);
@@ -505,7 +518,7 @@
 
         } catch (err) {
             hideTyping();
-            appendMessageToDOM('I seem to be having trouble connecting. Please try again.', 'bot', null, new Date().toISOString(), true);
+            showConnectionError();
         } finally {
             isSending = false;
             sendBtn.disabled = false;
@@ -541,6 +554,13 @@
         div.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i>' + escapeHtml(message);
         container.appendChild(div);
         container.scrollTop = container.scrollHeight;
+    }
+
+    function showConnectionError() {
+        const banner = document.getElementById('connectionErrorBanner');
+        banner.classList.remove('d-none');
+        clearTimeout(banner._hideTimer);
+        banner._hideTimer = setTimeout(() => banner.classList.add('d-none'), 4000);
     }
 
     function showTyping() {

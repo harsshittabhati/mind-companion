@@ -140,16 +140,19 @@ public class ChatService {
 
         // 4. Get AI response from Groq
         String aiReply = getAiResponse(userMessage, user, sessionId);
+        boolean aiFailed = (aiReply == null);
+        if (aiFailed) {
+            aiReply = "I'm having trouble connecting right now. Please try again in a moment.";
+        }
 
-        // 5. Save AI response (encrypted) — skip if confidential mode is on
-        ChatMessage botChatMessage = ChatMessage.builder()
-                .senderType("BOT")
-                .content(encryptionUtil.encrypt(aiReply))
-                .sessionId(sessionId)
-                .user(user)
-                .build();
-
-        if (!confidential) {
+        // 5. Save AI response (encrypted) — skip if confidential mode is on, and skip saving error placeholders
+        if (!confidential && !aiFailed) {
+            ChatMessage botChatMessage = ChatMessage.builder()
+                    .senderType("BOT")
+                    .content(encryptionUtil.encrypt(aiReply))
+                    .sessionId(sessionId)
+                    .user(user)
+                    .build();
             chatMessageRepository.save(botChatMessage);
         }
 
@@ -162,6 +165,7 @@ public class ChatService {
                 .isCrisis(isCrisis)
                 .sessionId(sessionId)
                 .createdAt(LocalDateTime.now())
+                .aiError(aiFailed)
                 .build();
 
         // 7. Add emergency message if crisis detected
@@ -320,7 +324,6 @@ public class ChatService {
             log.error("Groq API error: {}", e.getMessage(), e);
         }
 
-        return "I'm here for you. It sounds like you're going through " +
-                "something difficult. Would you like to tell me more about how you're feeling?";
+        return null;
     }
 }

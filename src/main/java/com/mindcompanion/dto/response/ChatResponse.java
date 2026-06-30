@@ -37,4 +37,7 @@ public class ChatResponse {
 
     // If crisis detected — show helpline info
     private String emergencyMessage;
+
+    // True if the AI reply is a fallback due to a connection/API failure
+    private Boolean aiError;
 }
