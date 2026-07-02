@@ -247,6 +247,55 @@ public class ChatService {
         return CRISIS_KEYWORDS.stream().anyMatch(lower::contains);
     }
 
+    public String generateJournalTitle(String content) {
+        try {
+            String snippet = content.length() > 300 ? content.substring(0, 300) : content;
+            List<Object> messages = new ArrayList<>();
+            messages.add(new java.util.HashMap<>() {{
+                put("role", "system");
+                put("content", "You generate short journal entry titles. Given the content of a journal entry, " +
+                        "respond with ONLY a 3-6 word title that captures the main theme or emotion. " +
+                        "No punctuation, no quotes, no explanation — just the title.");
+            }});
+            messages.add(new java.util.HashMap<>() {{
+                put("role", "user");
+                put("content", snippet);
+            }});
+
+            String requestBody = objectMapper.writeValueAsString(
+                    new java.util.HashMap<>() {{
+                        put("model", openAiModel);
+                        put("messages", messages);
+                        put("max_tokens", 16);
+                        put("temperature", 0.3);
+                    }}
+            );
+
+            OkHttpClient client = new OkHttpClient.Builder()
+                    .connectTimeout(10, TimeUnit.SECONDS)
+                    .readTimeout(10, TimeUnit.SECONDS)
+                    .build();
+
+            Request httpRequest = new Request.Builder()
+                    .url("https://api.groq.com/openai/v1/chat/completions")
+                    .header("Authorization", "Bearer " + openAiApiKey)
+                    .header("Content-Type", "application/json")
+                    .post(RequestBody.create(requestBody, MediaType.parse("application/json")))
+                    .build();
+
+            try (Response httpResponse = client.newCall(httpRequest).execute()) {
+                if (httpResponse.isSuccessful() && httpResponse.body() != null) {
+                    JsonNode jsonNode = objectMapper.readTree(httpResponse.body().string());
+                    String title = jsonNode.path("choices").path(0).path("message").path("content").asText("").trim();
+                    if (!title.isEmpty()) return title;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to generate journal title: {}", e.getMessage());
+        }
+        return null;
+    }
+
     private String generateSessionTitle(String firstMessage) {
         try {
             List<Object> messages = new ArrayList<>();

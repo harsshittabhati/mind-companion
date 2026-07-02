@@ -27,6 +27,7 @@ public class JournalService {
     private final UserRepository userRepository;
     private final EncryptionUtil encryptionUtil;
     private final GamificationService gamificationService;
+    private final ChatService chatService;
     private final Random random = new Random();
 
     @Transactional
@@ -42,15 +43,21 @@ public class JournalService {
         // Auto-generate title if not provided
         String title = request.getTitle();
         if (title == null || title.isBlank()) {
-            String[] words = request.getContent().trim().split("\\s+");
-            int wordCount = Math.min(words.length, 6);
-            StringBuilder autoTitle = new StringBuilder();
-            for (int i = 0; i < wordCount; i++) {
-                if (i > 0) autoTitle.append(" ");
-                autoTitle.append(words[i]);
+            String generated = chatService.generateJournalTitle(request.getContent());
+            if (generated != null) {
+                title = generated;
+            } else {
+                // Fallback: first 6 words if Groq fails
+                String[] words = request.getContent().trim().split("\\s+");
+                int wc = Math.min(words.length, 6);
+                StringBuilder autoTitle = new StringBuilder();
+                for (int i = 0; i < wc; i++) {
+                    if (i > 0) autoTitle.append(" ");
+                    autoTitle.append(words[i]);
+                }
+                if (words.length > 6) autoTitle.append("...");
+                title = autoTitle.toString();
             }
-            if (words.length > 6) autoTitle.append("...");
-            title = autoTitle.toString();
         }
 
         // Always create a new entry — allow multiple per day
