@@ -314,39 +314,55 @@
                             No mood data yet. Do your first check-in to see your timeline.
                         </p>
                     </div>`);
+            } else if (timeline.length < 3) {
+                document.getElementById('moodChart').style.display = 'none';
+                const emptyState = document.getElementById('moodEmptyState');
+                if (emptyState) emptyState.remove();
+                document.getElementById('moodChart').insertAdjacentHTML('afterend', `
+                    <div id="moodEmptyState" class="text-center text-muted py-4">
+                        <i class="bi bi-emoji-smile" style="font-size:2rem;color:#e9ecef"></i>
+                        <p class="mt-2 mb-0" style="font-size:0.85rem">
+                            Not enough data yet. Do a few more check-ins to see your mood timeline.
+                        </p>
+                    </div>`);
             } else {
                 document.getElementById('moodChart').style.display = 'block';
                 const emptyState = document.getElementById('moodEmptyState');
                 if (emptyState) emptyState.remove();
                 moodChartInstance = new Chart(document.getElementById('moodChart'), {
-                type: 'line',
-                data: {
-                    labels: timeline.map(d => d.date),
-                    datasets: [{
-                        label: 'Mood Score',
-                        data: timeline.map(d => d.score),
-                        borderColor: '#e94560',
-                        backgroundColor: 'rgba(233,69,96,0.1)',
-                        borderWidth: 2.5,
-                        pointBackgroundColor: '#e94560',
-                        pointRadius: 4,
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { min: 0, max: 10, grid: { color: '#f0f0f0' }, ticks: { stepSize: 2 } },
-                        x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 11 } } }
+                    type: 'line',
+                    data: {
+                        labels: timeline.map(d => d.date),
+                        datasets: [{
+                            label: 'Mood Score',
+                            data: timeline.map(d => d.score),
+                            borderColor: '#e94560',
+                            backgroundColor: 'rgba(233,69,96,0.1)',
+                            borderWidth: 2.5,
+                            pointBackgroundColor: '#e94560',
+                            pointRadius: 4,
+                            tension: 0.4,
+                            fill: true
+                        }]
                     },
-                    elements: {
-                        point: { radius: 5, hoverRadius: 7 },
-                        line: { borderWidth: 2.5 }
-                    },
-                    layout: { padding: { top: 10, bottom: 10 } }
-                }
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { min: 0, max: 10, grid: { color: '#f0f0f0' }, ticks: { stepSize: 2 } },
+                            x: {
+                                grid: { display: false },
+                                ticks: { maxTicksLimit: 8, font: { size: 11 } },
+                                min: timeline[0].date,
+                                max: timeline[timeline.length - 1].date
+                            }
+                        },
+                        elements: {
+                            point: { radius: 5, hoverRadius: 7 },
+                            line: { borderWidth: 2.5 }
+                        },
+                        layout: { padding: { top: 10, bottom: 10 } }
+                    }
                 });
             } // end else timeline
 

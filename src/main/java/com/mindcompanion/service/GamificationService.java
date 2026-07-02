@@ -158,15 +158,22 @@ public class GamificationService {
                 .map(e -> e.getCreatedAt().toLocalDate())
                 .collect(Collectors.toSet());
 
+        LocalDate today = LocalDate.now();
+        LocalDate yesterday = today.minusDays(1);
+
+        // Streak requires yesterday to have a check-in (like Snapchat/LeetCode)
+        if (!activeDates.contains(yesterday)) return 0;
+
+        // Count backwards from today if checked in today, else from yesterday
+        LocalDate start = activeDates.contains(today) ? today : yesterday;
         int streak = 0;
-        LocalDate date = LocalDate.now();
+        LocalDate date = start;
         while (activeDates.contains(date)) {
             streak++;
             date = date.minusDays(1);
         }
         return streak;
     }
-
     public List<Map<String, Object>> getUserBadges(User user) {
         return userBadgeRepository.findByUserOrderByEarnedAtDesc(user)
                 .stream()
