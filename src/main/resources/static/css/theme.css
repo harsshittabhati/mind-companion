@@ -1,0 +1,137 @@
+/* ── Light mode (default) ────────────────────────── */
+:root {
+    --bg-body: #f8f9fa;
+    --bg-card: #ffffff;
+    --bg-sidebar: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    --bg-navbar: #ffffff;
+    --bg-input: #ffffff;
+    --bg-message-bot: #f8f9fa;
+    --text-primary: #1a1a2e;
+    --text-secondary: #6c757d;
+    --text-muted: #adb5bd;
+    --border-color: #e9ecef;
+    --shadow: 0 2px 15px rgba(0,0,0,0.06);
+    --stat-row-border: #f0f0f0;
+    --session-hover: #f8f9fa;
+    --session-active: #fff5f7;
+    --input-border: #e9ecef;
+    --dropdown-bg: #ffffff;
+}
+
+/* ── Dark mode ───────────────────────────────────── */
+body.dark {
+    --bg-body: #0f0f1a;
+    --bg-card: #1a1a2e;
+    --bg-sidebar: linear-gradient(180deg, #0a0a14 0%, #0d0d1e 50%, #0a0a1a 100%);
+    --bg-navbar: #1a1a2e;
+    --bg-input: #16213e;
+    --bg-message-bot: #16213e;
+    --text-primary: #e9ecef;
+    --text-secondary: #adb5bd;
+    --text-muted: #6c757d;
+    --border-color: #2a2a3e;
+    --shadow: 0 2px 15px rgba(0,0,0,0.3);
+    --stat-row-border: #2a2a3e;
+    --session-hover: #16213e;
+    --session-active: #1e1e3e;
+    --input-border: #2a2a3e;
+    --dropdown-bg: #1a1a2e;
+}
+
+/* ── Apply vars to common elements ──────────────── */
+body.dark { background: var(--bg-body) !important; color: var(--text-primary) !important; }
+body.dark .card { background: var(--bg-card) !important; box-shadow: var(--shadow) !important; }
+body.dark .top-navbar { background: var(--bg-navbar) !important; border-color: var(--border-color) !important; }
+body.dark .form-control,
+body.dark .form-select,
+body.dark textarea { background: var(--bg-input) !important; border-color: var(--input-border) !important; color: var(--text-primary) !important; }
+body.dark .form-control::placeholder,
+body.dark textarea::placeholder { color: var(--text-muted) !important; }
+body.dark .text-muted { color: var(--text-secondary) !important; }
+body.dark .text-dark { color: var(--text-primary) !important; }
+body.dark .dropdown-menu { background: var(--dropdown-bg) !important; border-color: var(--border-color) !important; }
+body.dark .dropdown-item { color: var(--text-primary) !important; }
+body.dark .dropdown-item:hover { background: var(--border-color) !important; }
+body.dark .dropdown-divider { border-color: var(--border-color) !important; }
+body.dark .stat-row { border-color: var(--stat-row-border) !important; }
+body.dark .stat-row .label { color: var(--text-secondary) !important; }
+body.dark .stat-row .value { color: var(--text-primary) !important; }
+body.dark .session-item:hover { background: var(--session-hover) !important; }
+body.dark .session-item.active { background: var(--session-active) !important; }
+body.dark .session-title { color: var(--text-primary) !important; }
+body.dark .message.bot .message-bubble { background: var(--bg-message-bot) !important; border-color: var(--border-color) !important; color: var(--text-primary) !important; }
+body.dark .chat-input { background: var(--bg-input) !important; border-color: var(--input-border) !important; color: var(--text-primary) !important; }
+body.dark .chat-input-area { background: var(--bg-navbar) !important; }
+body.dark .chat-header { border-color: var(--border-color) !important; }
+body.dark .xp-bar { background: var(--border-color) !important; }
+body.dark .badge-item { background: var(--bg-input) !important; }
+body.dark .section-title { color: var(--text-muted) !important; }
+body.dark h5, body.dark h6 { color: var(--text-primary) !important; }
+body.dark small { color: var(--text-secondary) !important; }
+body.dark .alert-warning { background: #2a2010 !important; border-color: #5a4a00 !important; color: #ffc107 !important; }
+body.dark #themeIcon { color: #f5c518 !important; }
+body.dark button[title="Toggle dark/light mode"] { border-color: #2a2a3e !important; background: #16213e !important; }
+/* ── Chat page specific ──────────────────────────── */
+body.dark .sessions-panel { background: var(--bg-card) !important; }
+body.dark .chat-container { background: var(--bg-card) !important; }
+body.dark .chat-input { background: var(--bg-input) !important; color: var(--text-primary) !important; border-color: var(--input-border) !important; }
+body.dark .chat-input-area { background: var(--bg-card) !important; border-color: var(--border-color) !important; }
+body.dark .typing-dots { background: var(--bg-input) !important; }
+body.dark .sessions-header { border-color: var(--border-color) !important; }
+body.dark .sessions-list .text-muted { color: var(--text-muted) !important; }
+
+/* ── Journal page specific ───────────────────────── */
+body.dark .journal-entry-card { background: var(--bg-input) !important; }
+body.dark .journal-entry-content { color: var(--text-secondary) !important; }
+body.dark .journal-textarea { background: var(--bg-input) !important; color: var(--text-primary) !important; border-color: var(--input-border) !important; }
+body.dark .mood-tag-btn { background: var(--bg-input) !important; border-color: var(--border-color) !important; color: var(--text-secondary) !important; }
+body.dark .ai-prompt-box { background: #1a1040 !important; border-color: #3d1f7a !important; }
+
+/* ── Mood page specific ──────────────────────────── */
+body.dark .mood-emoji-btn { background: var(--bg-input) !important; border-color: var(--border-color) !important; }
+body.dark .mood-emoji-btn.selected { background: #2a1020 !important; }
+body.dark .history-item { background: var(--bg-input) !important; }
+
+/* ── Profile page specific ───────────────────────── */
+body.dark .form-label { color: var(--text-secondary) !important; }
+body.dark .btn-danger-soft { background: #1a0505 !important; }
+body.dark [style*="border: 1.5px solid #f8d7da"] { border-color: #5a1a1a !important; }
+
+/* ── Text visibility fixes ───────────────────────── */
+body.dark .badge-name { color: var(--text-primary) !important; }
+body.dark .badge-desc { color: var(--text-secondary) !important; }
+body.dark .fw-bold { color: var(--text-primary) !important; }
+body.dark .journal-entry-card .fw-bold { color: var(--text-primary) !important; }
+body.dark .journal-entry-content { color: var(--text-secondary) !important; }
+body.dark .session-title { color: var(--text-primary) !important; }
+body.dark .session-date { color: var(--text-muted) !important; }
+body.dark .score-label { color: var(--text-secondary) !important; }
+body.dark .history-item .fw-600 { color: var(--text-primary) !important; }
+body.dark [style*="color: #333"] { color: var(--text-primary) !important; }
+body.dark [style*="color:#333"] { color: var(--text-primary) !important; }
+body.dark [style*="color: #495057"] { color: var(--text-secondary) !important; }
+body.dark [style*="color:#495057"] { color: var(--text-secondary) !important; }
+body.dark [style*="color: #1a1a2e"] { color: var(--text-primary) !important; }
+body.dark [style*="color:#1a1a2e"] { color: var(--text-primary) !important; }
+body.dark [style*="font-weight:600"] { color: var(--text-primary) !important; }
+body.dark [style*="font-weight: 600"] { color: var(--text-primary) !important; }
+
+/* ── Remaining text visibility fixes ─────────────── */
+body.dark [style*="font-size:0.9rem;font-weight:500"] { color: var(--text-primary) !important; }
+body.dark [style*="font-size:0.9rem; font-weight:500"] { color: var(--text-primary) !important; }
+body.dark [style*="font-size:0.8rem"] { color: var(--text-secondary) !important; }
+body.dark .section-title { color: #6c757d !important; }
+body.dark .stat-row .label { color: var(--text-secondary) !important; }
+body.dark .stat-row .value { color: var(--text-primary) !important; }
+
+/* Sentiment legend text */
+body.dark #sentimentLegend span { color: var(--text-primary) !important; }
+body.dark #sentimentLegend div { color: var(--text-primary) !important; }
+
+/* Profile inline text */
+body.dark .card p { color: var(--text-secondary) !important; }
+body.dark .card div[style] { color: var(--text-primary) !important; }
+
+/* Danger zone text */
+body.dark .section-title.text-danger { color: #e94560 !important; }
+body.dark [style*="font-size:0.9rem;font-weight:500"] { color: var(--text-primary) !important; }

@@ -54,6 +54,10 @@ public class User {
     @Builder.Default
     private Boolean confidentialMode = false;
 
+    @Column(name = "theme_preference")
+    @Builder.Default
+    private String themePreference = "light";
+
     @Column(name = "data_retention_days")
     @Builder.Default
     private Integer dataRetentionDays = 365;

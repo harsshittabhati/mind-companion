@@ -52,6 +52,9 @@ public class UserDataController {
         if (request.getConfidentialMode() != null) {
             user.setConfidentialMode(request.getConfidentialMode());
         }
+        if (request.getThemePreference() != null) {
+            user.setThemePreference(request.getThemePreference());
+        }
 
         userRepository.save(user);
         log.info("Privacy settings updated for user {}", userDetails.getId());
@@ -102,7 +105,8 @@ public class UserDataController {
                 user.getUsername(),
                 user.getFullName() != null && !user.getFullName().isBlank()
                         ? user.getFullName() : user.getUsername(),
-                user.getEmail()
+                user.getEmail(),
+                user.getThemePreference() != null ? user.getThemePreference() : "light"
         ));
     }
     @PutMapping("/profile")
@@ -183,13 +187,15 @@ public class UserDataController {
         public String getPhone() { return phone; }
     }
 
-    record MeResponse(String username, String fullName, String email) {}
+    record MeResponse(String username, String fullName, String email, String themePreference) {}
     record PrivacySettingsResponse(Integer retentionDays, boolean confidentialMode) {}
 
     static class PrivacySettingsRequest {
         private Integer retentionDays;
         private Boolean confidentialMode;
+        private String themePreference;
         public Integer getRetentionDays() { return retentionDays; }
         public Boolean getConfidentialMode() { return confidentialMode; }
+        public String getThemePreference() { return themePreference; }
     }
 }
